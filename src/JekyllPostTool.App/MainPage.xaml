@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="JekyllPostTool_App.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:JekyllPostTool_App"
+    xmlns:pages="using:JekyllPostTool_App.Pages"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <NavigationView
+        x:Name="NavView"
+        IsBackButtonVisible="Collapsed"
+        IsSettingsVisible="False"
+        PaneDisplayMode="Left"
+        SelectionChanged="NavView_SelectionChanged">
+        <NavigationView.MenuItems>
+            <NavigationViewItem
+                Content="项目"
+                Icon="Folder"
+                Tag="Project" />
+            <NavigationViewItem
+                Content="作者"
+                Icon="Contact"
+                Tag="Authors" />
+            <NavigationViewItem
+                Content="博文"
+                Icon="Edit"
+                Tag="Post" />
+        </NavigationView.MenuItems>
+
+        <Frame x:Name="ContentFrame" Padding="32,24" />
+    </NavigationView>
+</Page>

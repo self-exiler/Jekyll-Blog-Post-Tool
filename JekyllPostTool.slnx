@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/JekyllPostTool.App/JekyllPostTool.App.csproj" />
+    <Project Path="src/JekyllPostTool.Application/JekyllPostTool.Application.csproj" />
+    <Project Path="src/JekyllPostTool.Domain/JekyllPostTool.Domain.csproj" />
+    <Project Path="src/JekyllPostTool.Infrastructure/JekyllPostTool.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/JekyllPostTool.Application.Tests/JekyllPostTool.Application.Tests.csproj" />
+    <Project Path="tests/JekyllPostTool.Domain.Tests/JekyllPostTool.Domain.Tests.csproj" />
+    <Project Path="tests/JekyllPostTool.Infrastructure.Tests/JekyllPostTool.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>

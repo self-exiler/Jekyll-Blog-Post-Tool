@@ -1,0 +1,23 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.userprefs
+project.lock.json
+TestResultTemplate.html
+
+## Windows App SDK
+*.appx
+*.msix
+*.pfx
+*.appxsym
+*.appxupload
+BundleArtifacts/
+pkg/
+
+## IDE
+.idea/
+*.swp
+*~

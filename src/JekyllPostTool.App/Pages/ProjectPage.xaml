@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="JekyllPostTool_App.Pages.ProjectPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ct="using:CommunityToolkit.WinUI.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid RowSpacing="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock
+                VerticalAlignment="Center"
+                Style="{StaticResource TitleTextBlockStyle}"
+                Text="项目" />
+
+            <Button
+                Grid.Column="1"
+                Command="{x:Bind ViewModel.SelectFolderCommand}"
+                Content="选择文件夹"
+                Style="{StaticResource AccentButtonStyle}" />
+        </Grid>
+
+        <StackPanel Grid.Row="1" Spacing="12">
+            <ct:SettingsCard
+                Header="默认项目路径"
+                Description="{x:Bind ViewModel.ProjectPath, Mode=OneWay}">
+                <Button
+                    Command="{x:Bind ViewModel.SelectFolderCommand}"
+                    Content="更改默认路径" />
+            </ct:SettingsCard>
+
+            <ct:SettingsCard
+                Header="项目校验"
+                Description="{x:Bind ViewModel.ValidationMessage, Mode=OneWay}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button
+                        Command="{x:Bind ViewModel.ValidateCommand}"
+                        Content="重新校验" />
+                    <Button
+                        Command="{x:Bind ViewModel.CreatePostsDirectoryCommand}"
+                        Content="创建 _posts" />
+                </StackPanel>
+            </ct:SettingsCard>
+        </StackPanel>
+    </Grid>
+</Page>

@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="JekyllPostTool_App.Pages.PostPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ct="using:CommunityToolkit.WinUI.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="using:JekyllPostTool_App.ViewModels"
+    Loaded="OnLoaded"
+    mc:Ignorable="d">
+
+    <Grid RowSpacing="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid ColumnSpacing="12" ColumnDefinitions="*,Auto">
+            <TextBlock
+                VerticalAlignment="Center"
+                Style="{StaticResource TitleTextBlockStyle}"
+                Text="{x:Bind ViewModel.PageTitle, Mode=OneWay}" />
+
+            <StackPanel
+                Grid.Column="1"
+                Orientation="Horizontal"
+                Spacing="8">
+                <Button
+                    Command="{x:Bind ViewModel.NewPostCommand}"
+                    Content="新建博文" />
+                <Button
+                    Command="{x:Bind ViewModel.OpenPostCommand}"
+                    Content="打开博文" />
+            </StackPanel>
+        </Grid>
+
+        <Grid
+            Grid.Row="1"
+            ColumnSpacing="24"
+            ColumnDefinitions="*,*">
+            <ScrollViewer>
+                <StackPanel Spacing="16">
+                    <ct:SettingsCard Header="基本信息">
+                        <StackPanel Spacing="12">
+                            <TextBox
+                                Header="title *"
+                                Text="{x:Bind ViewModel.Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <Grid ColumnSpacing="8" ColumnDefinitions="*,Auto,Auto">
+                                <DatePicker Date="{x:Bind ViewModel.SelectedDate, Mode=TwoWay}" />
+                                <TimePicker
+                                    Grid.Column="1"
+                                    Time="{x:Bind ViewModel.SelectedTime, Mode=TwoWay}" />
+                                <ComboBox
+                                    Grid.Column="2"
+                                    MinWidth="90"
+                                    ItemsSource="{x:Bind ViewModel.TimeZoneOptions}"
+                                    SelectedItem="{x:Bind ViewModel.SelectedTimeZone, Mode=TwoWay}" />
+                            </Grid>
+                        </StackPanel>
+                    </ct:SettingsCard>
+
+                    <ct:SettingsCard Header="分类">
+                        <StackPanel Spacing="8">
+                            <TextBox
+                                Header="主分类"
+                                Text="{x:Bind ViewModel.Category1, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBox
+                                Header="子分类"
+                                Text="{x:Bind ViewModel.Category2, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </ct:SettingsCard>
+
+                    <ct:SettingsCard Header="标签">
+                        <TextBox
+                            PlaceholderText="用逗号分隔多个标签"
+                            Text="{x:Bind ViewModel.Tags, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </ct:SettingsCard>
+
+                    <ct:SettingsCard Header="作者 *">
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.AvailableAuthors}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:AuthorOption">
+                                    <CheckBox
+                                        Content="{x:Bind DisplayName}"
+                                        IsChecked="{x:Bind IsSelected, Mode=TwoWay}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ct:SettingsCard>
+
+                    <ct:SettingsCard Header="描述">
+                        <TextBox
+                            MinHeight="80"
+                            AcceptsReturn="True"
+                            Text="{x:Bind ViewModel.Description, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </ct:SettingsCard>
+                </StackPanel>
+            </ScrollViewer>
+
+            <ScrollViewer Grid.Column="1">
+                <StackPanel Spacing="16">
+                    <ct:SettingsCard Header="文件名预览">
+                        <TextBlock
+                            FontFamily="Cascadia Mono, Consolas"
+                            Text="{x:Bind ViewModel.FileNamePreview, Mode=OneWay}"
+                            TextWrapping="Wrap" />
+                    </ct:SettingsCard>
+
+                    <ct:SettingsCard Header="front matter 预览">
+                        <TextBlock
+                            FontFamily="Cascadia Mono, Consolas"
+                            IsTextSelectionEnabled="True"
+                            Text="{x:Bind ViewModel.FrontMatterPreview, Mode=OneWay}"
+                            TextWrapping="Wrap" />
+                    </ct:SettingsCard>
+
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button
+                            Command="{x:Bind ViewModel.SavePostCommand}"
+                            Content="保存"
+                            Style="{StaticResource AccentButtonStyle}" />
+                        <Button
+                            Command="{x:Bind ViewModel.ImportBodyCommand}"
+                            Content="导入正文" />
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</Page>
