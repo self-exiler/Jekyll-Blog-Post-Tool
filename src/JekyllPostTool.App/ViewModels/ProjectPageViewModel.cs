@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using JekyllPostTool.Application.Projects;
@@ -19,15 +20,6 @@ public sealed partial class ProjectPageViewModel : ObservableObject
     [ObservableProperty]
     private string _projectPath = "未选择项目";
 
-    [ObservableProperty]
-    private bool _postsDirectoryExists;
-
-    [ObservableProperty]
-    private string _validationMessage = string.Empty;
-
-    [ObservableProperty]
-    private bool _isValidating;
-
     public ProjectPageViewModel(
         IProjectContext projectContext,
         DefaultProjectSettingService settingService,
@@ -39,11 +31,17 @@ public sealed partial class ProjectPageViewModel : ObservableObject
         _filePickerService = filePickerService;
         _dialogService = dialogService;
 
+        _projectContext.CurrentProjectChanged += OnCurrentProjectChanged;
+        RefreshFromContext();
+    }
+
+    private void OnCurrentProjectChanged(object? sender, EventArgs e)
+    {
         RefreshFromContext();
     }
 
     [RelayCommand]
-    private async Task SelectFolderAsync()
+    private async Task SelectProjectPathAsync()
     {
         var path = await _filePickerService.PickFolderAsync();
         if (string.IsNullOrWhiteSpace(path))
@@ -65,7 +63,7 @@ public sealed partial class ProjectPageViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task CreatePostsDirectoryAsync()
+    private async Task OpenInExplorerAsync()
     {
         var project = _projectContext.CurrentProject;
         if (project is null)
@@ -74,34 +72,41 @@ public sealed partial class ProjectPageViewModel : ObservableObject
             return;
         }
 
-        Directory.CreateDirectory(project.PostsDirectory);
-        RefreshFromContext();
+        try
+        {
+            Process.Start(new ProcessStartInfo("explorer.exe", project.Path) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            await _dialogService.ShowInfoAsync("打开失败", $"无法在资源管理器中打开项目：{ex.Message}");
+        }
     }
 
     [RelayCommand]
-    private async Task ValidateAsync()
+    private async Task OpenInVsCodeAsync()
     {
-        IsValidating = true;
-        await Task.Delay(100);
-        RefreshFromContext();
-        IsValidating = false;
+        var project = _projectContext.CurrentProject;
+        if (project is null)
+        {
+            await _dialogService.ShowInfoAsync("未选择项目", "请先选择一个博客项目。");
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo("code", project.Path) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            await _dialogService.ShowInfoAsync(
+                "打开失败",
+                $"无法在 VS Code 中打开项目。请确认 VS Code 已安装且 `code` 命令在 PATH 中。{Environment.NewLine}错误：{ex.Message}");
+        }
     }
 
     private void RefreshFromContext()
     {
         var project = _projectContext.CurrentProject;
-        if (project is null)
-        {
-            ProjectPath = "未选择项目";
-            PostsDirectoryExists = false;
-            ValidationMessage = "尚未选择博客项目";
-            return;
-        }
-
-        ProjectPath = project.Path;
-        PostsDirectoryExists = Directory.Exists(project.PostsDirectory);
-        ValidationMessage = PostsDirectoryExists
-            ? "_posts/ 目录已存在"
-            : "_posts/ 目录不存在，需要创建";
+        ProjectPath = project is null ? "未选择项目" : project.Path;
     }
 }

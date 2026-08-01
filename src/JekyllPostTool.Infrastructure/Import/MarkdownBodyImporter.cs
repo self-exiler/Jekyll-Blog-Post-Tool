@@ -1,4 +1,5 @@
 using System.Text;
+using JekyllPostTool.Domain.Posts;
 
 namespace JekyllPostTool.Infrastructure.Import;
 
@@ -10,25 +11,7 @@ public sealed class MarkdownBodyImporter
     public async Task<string> ImportAsync(string filePath, CancellationToken cancellationToken = default)
     {
         var content = await File.ReadAllTextAsync(filePath, Encoding.UTF8, cancellationToken);
-
-        if (!content.TrimStart().StartsWith("---", StringComparison.Ordinal))
-        {
-            return content;
-        }
-
-        var firstIndex = content.IndexOf("---", StringComparison.Ordinal);
-        if (firstIndex < 0)
-        {
-            return content;
-        }
-
-        var secondIndex = content.IndexOf("---", firstIndex + 3, StringComparison.Ordinal);
-        if (secondIndex < 0)
-        {
-            return content;
-        }
-
-        var body = content[(secondIndex + 3)..];
-        return body.TrimStart('\r', '\n');
+        MarkdownSplitter.TrySplit(content, out _, out var body);
+        return body;
     }
 }

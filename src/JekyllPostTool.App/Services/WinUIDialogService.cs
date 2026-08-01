@@ -58,27 +58,6 @@ public sealed class WinUIDialogService : IDialogService
         return result == ContentDialogResult.Primary;
     }
 
-    public async Task<string?> ShowTextInputAsync(string title, string placeholder, string defaultText = "")
-    {
-        var textBox = new TextBox
-        {
-            Text = defaultText,
-            PlaceholderText = placeholder
-        };
-
-        var dialog = new ContentDialog
-        {
-            XamlRoot = XamlRoot,
-            Title = title,
-            Content = textBox,
-            PrimaryButtonText = "确认",
-            CloseButtonText = "取消"
-        };
-
-        var result = await dialog.ShowAsync();
-        return result == ContentDialogResult.Primary ? textBox.Text : null;
-    }
-
     public async Task<ConflictResolutionKind?> ShowConflictResolutionAsync(string fileName, IEnumerable<ConflictResolution> resolutions)
     {
         var radioButtons = new RadioButtons();
@@ -88,7 +67,6 @@ public sealed class WinUIDialogService : IDialogService
         {
             var label = resolution.Kind switch
             {
-                ConflictResolutionKind.RenameTitle => "修改 title 重新生成",
                 ConflictResolutionKind.AutoSuffix => $"自动加序号后缀 ({resolution.Suffix})",
                 ConflictResolutionKind.Overwrite => "覆盖现有文件",
                 _ => resolution.Kind.ToString()

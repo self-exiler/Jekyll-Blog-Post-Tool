@@ -41,9 +41,6 @@ public sealed class PostOperationResult
     public static PostOperationResult Failure(IReadOnlyList<ValidationError> errors) =>
         new(false, false, false, null, errors, null);
 
-    public static PostOperationResult Failure(ValidationError error) =>
-        new(false, false, false, null, new[] { error }, null);
-
     public static PostOperationResult WithConflict(ConflictResult conflict) =>
         new(false, true, false, null, null, conflict);
 

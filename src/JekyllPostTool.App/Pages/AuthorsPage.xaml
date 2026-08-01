@@ -57,8 +57,10 @@
 
             <ct:SettingsCard
                 Grid.Column="1"
-                Header="作者信息">
-                <StackPanel Spacing="16" MinWidth="360">
+                ContentAlignment="Vertical"
+                Header="作者信息"
+                HorizontalContentAlignment="Stretch">
+                <StackPanel Spacing="16">
                     <TextBox
                         Header="id *"
                         IsReadOnly="{x:Bind ViewModel.IsReadOnly, Mode=OneWay}"

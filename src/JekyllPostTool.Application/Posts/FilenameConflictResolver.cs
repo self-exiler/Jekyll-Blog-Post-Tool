@@ -18,16 +18,13 @@ public sealed class FilenameConflictResolver
     public ConflictResult Check(BlogProject project, string fileName)
     {
         var filePath = System.IO.Path.Combine(project.PostsDirectory, fileName);
-        var exists = _postRepository.ExistsAsync(filePath).GetAwaiter().GetResult();
-
-        if (!exists)
+        if (!_postRepository.Exists(filePath))
         {
             return ConflictResult.NoConflict(filePath);
         }
 
         var candidates = new List<ConflictResolution>
         {
-            ConflictResolution.RenameTitle,
             ConflictResolution.AutoSuffix(FindNextAvailableSuffix(project, fileName)),
             ConflictResolution.Overwrite
         };
@@ -45,9 +42,7 @@ public sealed class FilenameConflictResolver
         {
             var candidate = $"{nameWithoutExtension}-{suffix}{extension}";
             var candidatePath = System.IO.Path.Combine(project.PostsDirectory, candidate);
-            var exists = _postRepository.ExistsAsync(candidatePath).GetAwaiter().GetResult();
-
-            if (!exists)
+            if (!_postRepository.Exists(candidatePath))
             {
                 return suffix;
             }
@@ -76,6 +71,30 @@ public sealed class ConflictResult
 
     public static ConflictResult Conflict(string filePath, IReadOnlyList<ConflictResolution> resolutions) =>
         new(true, filePath, resolutions);
+
+    public string ResolveFilePath(ConflictResolutionKind? resolution)
+    {
+        if (!HasConflict)
+        {
+            return FilePath;
+        }
+
+        return resolution switch
+        {
+            ConflictResolutionKind.AutoSuffix => AppendSuffix(FilePath, Resolutions.First(r => r.Kind == ConflictResolutionKind.AutoSuffix).Suffix!.Value),
+            ConflictResolutionKind.Overwrite => FilePath,
+            null => throw new InvalidOperationException("需要选择冲突处理方式"),
+            _ => throw new InvalidOperationException("不支持的冲突处理方式")
+        };
+    }
+
+    private static string AppendSuffix(string filePath, int suffix)
+    {
+        var directory = System.IO.Path.GetDirectoryName(filePath)!;
+        var nameWithoutExtension = System.IO.Path.GetFileNameWithoutExtension(filePath);
+        var extension = System.IO.Path.GetExtension(filePath);
+        return System.IO.Path.Combine(directory, $"{nameWithoutExtension}-{suffix}{extension}");
+    }
 }
 
 public sealed class ConflictResolution
@@ -90,8 +109,6 @@ public sealed class ConflictResolution
         Suffix = suffix;
     }
 
-    public static ConflictResolution RenameTitle => new(ConflictResolutionKind.RenameTitle);
-
     public static ConflictResolution AutoSuffix(int suffix) => new(ConflictResolutionKind.AutoSuffix, suffix);
 
     public static ConflictResolution Overwrite => new(ConflictResolutionKind.Overwrite);
@@ -99,7 +116,6 @@ public sealed class ConflictResolution
 
 public enum ConflictResolutionKind
 {
-    RenameTitle,
     AutoSuffix,
     Overwrite
 }

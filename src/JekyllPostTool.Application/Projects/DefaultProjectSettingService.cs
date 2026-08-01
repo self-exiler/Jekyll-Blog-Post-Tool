@@ -1,33 +1,25 @@
-using JekyllPostTool.Domain.Settings;
-
 namespace JekyllPostTool.Application.Projects;
 
 /// <summary>
-/// 管理默认项目路径的读写。
+/// 管理默认项目路径的读写，直接持久化到 settings.json。
 /// </summary>
 public sealed class DefaultProjectSettingService
 {
-    private readonly IAppSettingsRepository _repository;
+    private readonly JsonFileStore _store;
 
-    public DefaultProjectSettingService(IAppSettingsRepository repository)
+    public DefaultProjectSettingService(string appDataDirectory)
     {
-        _repository = repository;
+        _store = new JsonFileStore(appDataDirectory, "settings.json");
     }
 
     public async Task<string?> GetAsync(CancellationToken cancellationToken = default)
     {
-        var settings = await _repository.LoadAsync(cancellationToken);
-        return settings.DefaultProjectPath;
+        var settings = await _store.ReadAsync<DefaultProjectSettings>(cancellationToken);
+        return settings?.DefaultProjectPath;
     }
 
-    public async Task SetAsync(string? path, CancellationToken cancellationToken = default)
-    {
-        var settings = new AppSettings(path);
-        await _repository.SaveAsync(settings, cancellationToken);
-    }
+    public Task SetAsync(string? path, CancellationToken cancellationToken = default)
+        => _store.WriteAsync(new DefaultProjectSettings(path), cancellationToken);
 
-    public async Task ClearAsync(CancellationToken cancellationToken = default)
-    {
-        await _repository.SaveAsync(new AppSettings(null), cancellationToken);
-    }
+    private sealed record DefaultProjectSettings(string? DefaultProjectPath);
 }

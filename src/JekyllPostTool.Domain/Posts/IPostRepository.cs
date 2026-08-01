@@ -5,11 +5,11 @@ namespace JekyllPostTool.Domain.Posts;
 /// </summary>
 public interface IPostRepository
 {
-    Task<bool> ExistsAsync(string filePath, CancellationToken cancellationToken = default);
+    bool Exists(string filePath);
 
     Task<Post?> LoadAsync(string filePath, CancellationToken cancellationToken = default);
 
     Task SaveAsync(Post post, CancellationToken cancellationToken = default);
 
-    Task<string> ReadBodyAsync(string filePath, CancellationToken cancellationToken = default);
+    Task<string?> ReadAllTextAsync(string filePath, CancellationToken cancellationToken = default);
 }

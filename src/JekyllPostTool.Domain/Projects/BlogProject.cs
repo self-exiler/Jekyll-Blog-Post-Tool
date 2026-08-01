@@ -8,6 +8,4 @@ public sealed record BlogProject(string Path)
     public string PostsDirectory => System.IO.Path.Combine(Path, "_posts");
 
     public string AuthorsFilePath => System.IO.Path.Combine(Path, "_data", "authors.yml");
-
-    public string ConfigFilePath => System.IO.Path.Combine(Path, "_config.yml");
 }

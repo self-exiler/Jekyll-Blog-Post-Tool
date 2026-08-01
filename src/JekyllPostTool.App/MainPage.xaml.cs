@@ -4,7 +4,7 @@ using Microsoft.UI.Xaml.Controls;
 namespace JekyllPostTool_App;
 
 /// <summary>
-/// 左侧导航外壳，负责三大模块切换。
+/// 左侧导航外壳，负责四大模块切换。
 /// </summary>
 public sealed partial class MainPage : Page
 {
@@ -27,7 +27,9 @@ public sealed partial class MainPage : Page
         {
             "Project" => typeof(ProjectPage),
             "Authors" => typeof(AuthorsPage),
-            "Post" => typeof(PostPage),
+            "PostHeader" => typeof(PostPage),
+            "PostBody" => typeof(PostBodyPage),
+            "Advanced" => typeof(AdvancedPage),
             _ => typeof(ProjectPage)
         };
 

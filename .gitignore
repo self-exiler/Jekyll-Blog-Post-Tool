@@ -21,3 +21,7 @@ pkg/
 .idea/
 *.swp
 *~
+
+## 工具与备份
+.workbuddy/
+*.slnx.bak

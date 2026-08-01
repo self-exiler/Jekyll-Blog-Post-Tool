@@ -20,5 +20,5 @@ public sealed class FrontMatter
     /// <summary>
     /// 工具不认识的 front matter 字段，按原顺序保存以便 round-trip。
     /// </summary>
-    public IDictionary<string, object?> UnknownFields { get; set; } = new Dictionary<string, object?>();
+    public IDictionary<string, object?> UnknownFields { get; set; } = new OrderedDictionary<string, object?>();
 }

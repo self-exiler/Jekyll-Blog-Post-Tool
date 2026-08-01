@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="JekyllPostTool_App.Pages.PostBodyPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ct="using:CommunityToolkit.WinUI.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    NavigationCacheMode="Required"
+    mc:Ignorable="d">
+
+    <Grid RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid ColumnSpacing="12" ColumnDefinitions="*,Auto">
+            <TextBlock
+                VerticalAlignment="Center"
+                Style="{StaticResource TitleTextBlockStyle}"
+                Text="博文正文" />
+
+            <StackPanel
+                Grid.Column="1"
+                Orientation="Horizontal"
+                Spacing="8">
+                <Button
+                    Command="{x:Bind ViewModel.NewPostCommand}"
+                    Content="新建博文" />
+                <Button
+                    Command="{x:Bind ViewModel.OpenPostCommand}"
+                    Content="打开已有博文" />
+                <Button
+                    Command="{x:Bind ViewModel.SavePostCommand}"
+                    Content="保存"
+                    Style="{StaticResource AccentButtonStyle}" />
+            </StackPanel>
+        </Grid>
+
+        <!-- 导入正文 -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12">
+            <Button
+                Command="{x:Bind ViewModel.ImportBodyCommand}"
+                Content="导入正文..." />
+            <CheckBox
+                VerticalAlignment="Center"
+                Content="替换而非追加"
+                IsChecked="{x:Bind ViewModel.ReplaceBodyOnImport, Mode=TwoWay}" />
+        </StackPanel>
+
+        <!-- 插入图片（平铺，不折叠） -->
+        <Grid Grid.Row="2" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock
+                VerticalAlignment="Center"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Text="alt 文本" />
+            <TextBox
+                Grid.Column="1"
+                HorizontalAlignment="Stretch"
+                PlaceholderText="留空则生成 ![](...)；图片将插入到正文光标处"
+                Text="{x:Bind ViewModel.AltText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <Button
+                x:Name="InsertImagesButton"
+                Grid.Column="2"
+                Click="OnInsertImagesClick"
+                IsEnabled="{x:Bind ViewModel.CanInsertImages, Mode=OneWay}"
+                Content="插入图片..."
+                Style="{StaticResource AccentButtonStyle}" />
+        </Grid>
+
+        <TextBox
+            x:Name="BodyTextBox"
+            Grid.Row="3"
+            Header="正文（Markdown）"
+            AcceptsReturn="True"
+            FontFamily="Cascadia Mono, Consolas"
+            IsTabStop="True"
+            MinHeight="240"
+            PlaceholderText="在此编辑博文正文，或使用上方工具导入/插入内容..."
+            ScrollViewer.HorizontalScrollBarVisibility="Auto"
+            ScrollViewer.VerticalScrollBarVisibility="Auto"
+            Text="{x:Bind ViewModel.Body, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+            TextWrapping="NoWrap" />
+    </Grid>
+</Page>

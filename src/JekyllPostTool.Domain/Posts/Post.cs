@@ -1,5 +1,3 @@
-using JekyllPostTool.Domain.Projects;
-
 namespace JekyllPostTool.Domain.Posts;
 
 /// <summary>
@@ -28,10 +26,5 @@ public sealed class Post
     public static string BuildFileName(DateTimeOffset date, Slug slug)
     {
         return $"{date:yyyy-MM-dd}-{slug.Value}.md";
-    }
-
-    public static string BuildFilePath(BlogProject project, DateTimeOffset date, Slug slug)
-    {
-        return System.IO.Path.Combine(project.PostsDirectory, BuildFileName(date, slug));
     }
 }

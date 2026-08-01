@@ -1,6 +1,8 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/JekyllPostTool.App/JekyllPostTool.App.csproj" />
+    <Project Path="src/JekyllPostTool.App/JekyllPostTool.App.csproj">
+      <Platform Solution="Debug|*" Project="x64" />
+    </Project>
     <Project Path="src/JekyllPostTool.Application/JekyllPostTool.Application.csproj" />
     <Project Path="src/JekyllPostTool.Domain/JekyllPostTool.Domain.csproj" />
     <Project Path="src/JekyllPostTool.Infrastructure/JekyllPostTool.Infrastructure.csproj" />

@@ -1,6 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\JekyllPostTool.Application\JekyllPostTool.Application.csproj" />
     <ProjectReference Include="..\JekyllPostTool.Domain\JekyllPostTool.Domain.csproj" />
   </ItemGroup>
 

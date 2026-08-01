@@ -1,5 +1,4 @@
 using Microsoft.UI.Xaml;
-using Windows.Storage;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 
@@ -17,7 +16,7 @@ public sealed class WinUIFilePickerService : IFilePickerService
         _window = window;
     }
 
-    public async Task<string?> PickFolderAsync(string? suggestedStartLocation = null)
+    public async Task<string?> PickFolderAsync()
     {
         var picker = new FolderPicker
         {
@@ -31,7 +30,7 @@ public sealed class WinUIFilePickerService : IFilePickerService
         return folder?.Path;
     }
 
-    public async Task<string?> PickFileAsync(string? suggestedStartLocation = null)
+    public async Task<string?> PickFileAsync()
     {
         var picker = new FileOpenPicker
         {
@@ -43,5 +42,27 @@ public sealed class WinUIFilePickerService : IFilePickerService
 
         var file = await picker.PickSingleFileAsync();
         return file?.Path;
+    }
+
+    public async Task<IReadOnlyList<string>?> PickFilesAsync(IEnumerable<string> fileTypes)
+    {
+        var picker = new FileOpenPicker
+        {
+            SuggestedStartLocation = PickerLocationId.PicturesLibrary
+        };
+        foreach (var type in fileTypes)
+        {
+            picker.FileTypeFilter.Add(type);
+        }
+
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(_window));
+
+        var files = await picker.PickMultipleFilesAsync();
+        if (files is null || files.Count == 0)
+        {
+            return null;
+        }
+
+        return files.Select(f => f.Path).ToList();
     }
 }

@@ -13,6 +13,7 @@
         x:Name="NavView"
         IsBackButtonVisible="Collapsed"
         IsSettingsVisible="False"
+        OpenPaneLength="280"
         PaneDisplayMode="Left"
         SelectionChanged="NavView_SelectionChanged">
         <NavigationView.MenuItems>
@@ -25,9 +26,17 @@
                 Icon="Contact"
                 Tag="Authors" />
             <NavigationViewItem
-                Content="博文"
+                Content="博文头信息"
                 Icon="Edit"
-                Tag="Post" />
+                Tag="PostHeader" />
+            <NavigationViewItem
+                Content="博文正文"
+                Icon="Document"
+                Tag="PostBody" />
+            <NavigationViewItem
+                Content="高级功能"
+                Icon="Setting"
+                Tag="Advanced" />
         </NavigationView.MenuItems>
 
         <Frame x:Name="ContentFrame" Padding="32,24" />

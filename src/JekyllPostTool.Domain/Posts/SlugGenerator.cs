@@ -20,7 +20,12 @@ public static partial class SlugGenerator
 
         foreach (var ch in title.Normalize(NormalizationForm.FormC).Trim())
         {
-            if (char.IsLetter(ch))
+            if (IsCjk(ch))
+            {
+                // 中文字符原样保留（须在 IsLetter 之前判断，否则 CJK 会被当作普通字母进入小写化分支）
+                builder.Append(ch);
+            }
+            else if (char.IsLetter(ch))
             {
                 builder.Append(char.ToLowerInvariant(ch));
             }
@@ -31,11 +36,6 @@ public static partial class SlugGenerator
             else if (char.IsWhiteSpace(ch))
             {
                 builder.Append('-');
-            }
-            else if (IsCjk(ch))
-            {
-                // 中文字符原样保留
-                builder.Append(ch);
             }
             else if (ch is '-' or '_')
             {

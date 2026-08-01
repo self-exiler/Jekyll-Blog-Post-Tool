@@ -117,23 +117,24 @@ public sealed partial class AuthorsPageViewModel : ObservableObject
             return;
         }
 
-        AuthorOperationResult result;
-        if (IsNewAuthor)
+        try
         {
-            result = await _authorUseCase.AddAsync(author);
+            if (IsNewAuthor)
+            {
+                await _authorUseCase.AddAsync(author);
+            }
+            else if (SelectedAuthor is not null)
+            {
+                await _authorUseCase.UpdateAsync(author);
+            }
+            else
+            {
+                return;
+            }
         }
-        else if (SelectedAuthor is not null)
+        catch (InvalidOperationException ex)
         {
-            result = await _authorUseCase.UpdateAsync(author);
-        }
-        else
-        {
-            return;
-        }
-
-        if (!result.IsSuccess)
-        {
-            await _dialogService.ShowInfoAsync("保存失败", result.Error ?? "未知错误");
+            await _dialogService.ShowInfoAsync("保存失败", ex.Message);
             return;
         }
 
@@ -158,10 +159,13 @@ public sealed partial class AuthorsPageViewModel : ObservableObject
             return;
         }
 
-        var result = await _authorUseCase.DeleteAsync(SelectedAuthor.Id);
-        if (!result.IsSuccess)
+        try
         {
-            await _dialogService.ShowInfoAsync("删除失败", result.Error ?? "未知错误");
+            await _authorUseCase.DeleteAsync(SelectedAuthor.Id);
+        }
+        catch (InvalidOperationException ex)
+        {
+            await _dialogService.ShowInfoAsync("删除失败", ex.Message);
             return;
         }
 

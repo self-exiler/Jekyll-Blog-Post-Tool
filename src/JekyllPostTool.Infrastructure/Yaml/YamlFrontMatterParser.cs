@@ -1,13 +1,12 @@
-using System.Collections;
 using System.Globalization;
 using JekyllPostTool.Domain.Posts;
-using YamlDotNet.Core;
 using YamlDotNet.RepresentationModel;
 
 namespace JekyllPostTool.Infrastructure.Yaml;
 
 /// <summary>
 /// 将 front matter YAML 文本解析为 FrontMatter 对象。
+/// 未知字段以保序字典存储以满足 round-trip 顺序要求（ADR-007）。
 /// </summary>
 public static class YamlFrontMatterParser
 {
@@ -21,7 +20,7 @@ public static class YamlFrontMatterParser
     public static FrontMatter Parse(string yaml)
     {
         var frontMatter = new FrontMatter();
-        var unknownFields = new Dictionary<string, object?>();
+        var unknownFields = new OrderedDictionary<string, object?>();
 
         if (string.IsNullOrWhiteSpace(yaml))
         {
@@ -93,12 +92,7 @@ public static class YamlFrontMatterParser
 
     private static string? GetScalarString(YamlNode node)
     {
-        if (node is YamlScalarNode scalar)
-        {
-            return scalar.Value;
-        }
-
-        return null;
+        return node is YamlScalarNode scalar ? scalar.Value : null;
     }
 
     private static IReadOnlyList<string> GetStringList(YamlNode node)
@@ -148,10 +142,18 @@ public static class YamlFrontMatterParser
         {
             YamlScalarNode scalar => scalar.Value,
             YamlSequenceNode sequence => sequence.Children.Select(ConvertYamlNode).ToList(),
-            YamlMappingNode mapping => mapping.Children.ToDictionary(
-                kvp => ((YamlScalarNode)kvp.Key).Value!,
-                kvp => ConvertYamlNode(kvp.Value)),
+            YamlMappingNode mapping => ConvertMapping(mapping),
             _ => null
         };
+    }
+
+    private static object? ConvertMapping(YamlMappingNode mapping)
+    {
+        var result = new OrderedDictionary<string, object?>();
+        foreach (var kvp in mapping.Children)
+        {
+            result[((YamlScalarNode)kvp.Key).Value!] = ConvertYamlNode(kvp.Value);
+        }
+        return result;
     }
 }

@@ -1,20 +1,18 @@
 using System.Collections.ObjectModel;
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using JekyllPostTool.Application.Ai;
 using JekyllPostTool.Application.Authors;
 using JekyllPostTool.Application.Posts;
-using JekyllPostTool.Domain.Authors;
 using JekyllPostTool.Domain.Posts;
-using JekyllPostTool.Domain.Projects;
 using JekyllPostTool.Infrastructure.Import;
-using JekyllPostTool.Infrastructure.Yaml;
 using JekyllPostTool_App.Services;
+using Microsoft.UI.Xaml;
 
 namespace JekyllPostTool_App.ViewModels;
 
 /// <summary>
-/// 博文编辑页视图模型。
+/// 博文编辑页视图模型（核心 partial：字段、构造、属性、作者、预览）。
 /// </summary>
 public sealed partial class PostPageViewModel : ObservableObject
 {
@@ -25,6 +23,10 @@ public sealed partial class PostPageViewModel : ObservableObject
     private readonly IFilePickerService _filePickerService;
     private readonly IDialogService _dialogService;
     private readonly MarkdownBodyImporter _bodyImporter;
+    private readonly IAiService _aiService;
+    private readonly ImageInserter _imageInserter;
+
+    private readonly DispatcherTimer _previewTimer;
 
     private string? _originalFilePath;
     private string? _originalContentHash;
@@ -33,15 +35,16 @@ public sealed partial class PostPageViewModel : ObservableObject
     private string _title = string.Empty;
 
     [ObservableProperty]
-    private DateTimeOffset _selectedDate = DateTimeOffset.Now;
+    private DateTimeOffset? _selectedDate;
 
     [ObservableProperty]
     private TimeSpan _selectedTime = DateTimeOffset.Now.TimeOfDay;
 
     [ObservableProperty]
-    private string _selectedTimeZone = FormatOffset(DateTimeOffset.Now.Offset);
+    private string _selectedTimeZone = TimeZoneFormatter.Format(DateTimeOffset.Now.Offset);
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCategory1))]
     private string _category1 = string.Empty;
 
     [ObservableProperty]
@@ -68,9 +71,47 @@ public sealed partial class PostPageViewModel : ObservableObject
     [ObservableProperty]
     private string _pageTitle = "博文";
 
+    /// <summary>
+    /// 导入正文时是否替换而非追加（FR-4.3：默认追加）。
+    /// </summary>
+    [ObservableProperty]
+    private bool _replaceBodyOnImport;
+
+    /// <summary>
+    /// 插入图片时统一的 alt 文本（可选，应用于本次所有图片）。
+    /// </summary>
+    [ObservableProperty]
+    private string _altText = string.Empty;
+
+    /// <summary>
+    /// 是否正在调用 AI 提取关键字（FR-7.3）。
+    /// </summary>
+    [ObservableProperty]
+    private bool _isExtractingKeywords;
+
+    [ObservableProperty]
+    private string _selectedAuthorsDisplay = "无作者";
+
     public ObservableCollection<AuthorOption> AvailableAuthors { get; } = new();
 
-    public IReadOnlyList<string> TimeZoneOptions { get; } = BuildTimeZoneOptions();
+    /// <summary>
+    /// 主分类非空时才允许填写子分类（界面原型设计 §4.3）。
+    /// </summary>
+    public bool HasCategory1 => !string.IsNullOrWhiteSpace(Category1);
+
+    public IReadOnlyList<string> TimeZoneOptions { get; } = TimeZoneFormatter.BuildOptions();
+
+    /// <summary>
+    /// 图片资源目标目录的相对路径（用于展示）。
+    /// </summary>
+    public string TargetDirectory => _projectContext.CurrentProject is null
+        ? "（未选项目）"
+        : $"assets/img/{GetCurrentSlug()}/";
+
+    /// <summary>
+    /// 是否允许插入图片：已选项目且能确定 slug（有文件名用文件名，否则用 title）。
+    /// </summary>
+    public bool CanInsertImages => _projectContext.CurrentProject is not null && !string.IsNullOrWhiteSpace(GetCurrentSlug());
 
     public PostPageViewModel(
         IProjectContext projectContext,
@@ -79,7 +120,9 @@ public sealed partial class PostPageViewModel : ObservableObject
         AuthorCrudUseCase authorUseCase,
         IFilePickerService filePickerService,
         IDialogService dialogService,
-        MarkdownBodyImporter bodyImporter)
+        MarkdownBodyImporter bodyImporter,
+        IAiService aiService,
+        ImageInserter imageInserter)
     {
         _projectContext = projectContext;
         _postCreateUseCase = postCreateUseCase;
@@ -88,8 +131,39 @@ public sealed partial class PostPageViewModel : ObservableObject
         _filePickerService = filePickerService;
         _dialogService = dialogService;
         _bodyImporter = bodyImporter;
+        _aiService = aiService;
+        _imageInserter = imageInserter;
+
+        _previewTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
+        _previewTimer.Tick += OnPreviewTimerTick;
 
         _projectContext.CurrentProjectChanged += OnCurrentProjectChanged;
+    }
+
+    /// <summary>
+    /// 获取当前博文 slug：优先从已保存文件名提取，否则用标题生成（遵循 ADR-006 中文保留）。
+    /// </summary>
+    private string GetCurrentSlug()
+    {
+        if (!string.IsNullOrEmpty(_originalFilePath))
+        {
+            return ImageInserter.ExtractSlugFromFileName(_originalFilePath);
+        }
+
+        // 未保存时用 SlugGenerator 生成，与文件名预览一致（ADR-006：中文原样保留）
+        var title = Title;
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return string.Empty;
+        }
+
+        return SlugGenerator.Generate(title).Value;
+    }
+
+    private void OnPreviewTimerTick(object? sender, object e)
+    {
+        _previewTimer.Stop();
+        UpdatePreview();
     }
 
     protected override void OnPropertyChanged(global::System.ComponentModel.PropertyChangedEventArgs e)
@@ -104,9 +178,20 @@ public sealed partial class PostPageViewModel : ObservableObject
             or nameof(Tags)
             or nameof(Description))
         {
-            UpdatePreview();
+            // 防抖：避免每次按键都触发 YAML 序列化与 slug 生成
+            _previewTimer.Stop();
+            _previewTimer.Start();
         }
     }
+
+    partial void OnTitleChanged(string value)
+    {
+        // 标题变化影响 slug → 影响插入图片的可用性与目标目录
+        OnPropertyChanged(nameof(TargetDirectory));
+        InsertImagesCommand.NotifyCanExecuteChanged();
+    }
+
+    partial void OnIsExtractingKeywordsChanged(bool value) => ExtractKeywordsCommand.NotifyCanExecuteChanged();
 
     [RelayCommand]
     public async Task LoadAuthorsAsync()
@@ -115,363 +200,73 @@ public sealed partial class PostPageViewModel : ObservableObject
 
         if (_projectContext.CurrentProject is null)
         {
+            UpdateAuthorsDisplay();
             return;
         }
 
         var authors = await _authorUseCase.ListAsync();
         foreach (var author in authors)
         {
-            AvailableAuthors.Add(new AuthorOption(author, UpdatePreview));
+            AvailableAuthors.Add(new AuthorOption(author, OnAuthorSelectionChanged));
         }
 
+        UpdateAuthorsDisplay();
         UpdatePreview();
     }
 
-    [RelayCommand]
-    private void NewPost()
+    private void OnAuthorSelectionChanged()
     {
-        _originalFilePath = null;
-        _originalContentHash = null;
-        PageTitle = "博文";
-
-        Title = string.Empty;
-        SelectedDate = DateTimeOffset.Now;
-        SelectedTime = DateTimeOffset.Now.TimeOfDay;
-        SelectedTimeZone = FormatOffset(DateTimeOffset.Now.Offset);
-        Category1 = string.Empty;
-        Category2 = string.Empty;
-        Tags = string.Empty;
-        Description = string.Empty;
-        Body = string.Empty;
-
-        foreach (var author in AvailableAuthors)
-        {
-            author.IsSelected = false;
-        }
-
+        UpdateAuthorsDisplay();
         UpdatePreview();
     }
 
-    [RelayCommand]
-    private async Task OpenPostAsync()
+    private void UpdateAuthorsDisplay()
     {
-        var project = _projectContext.CurrentProject;
-        if (project is null)
-        {
-            await _dialogService.ShowInfoAsync("未选择项目", "请先选择一个博客项目。");
-            return;
-        }
-
-        var filePath = await _filePickerService.PickFileAsync(project.PostsDirectory);
-        if (string.IsNullOrWhiteSpace(filePath))
-        {
-            return;
-        }
-
-        var postsDirectory = Path.GetFullPath(project.PostsDirectory);
-        var selectedDirectory = Path.GetFullPath(Path.GetDirectoryName(filePath)!);
-        if (!string.Equals(selectedDirectory, postsDirectory, StringComparison.OrdinalIgnoreCase))
-        {
-            await _dialogService.ShowInfoAsync("路径无效", "只能打开当前项目 _posts/ 目录下的 .md 文件。");
-            return;
-        }
-
-        await LoadPostAsync(filePath);
+        var selected = AvailableAuthors.Where(a => a.IsSelected).Select(a => a.Id).ToList();
+        SelectedAuthorsDisplay = selected.Count == 0 ? "无作者" : string.Join(", ", selected);
     }
 
-    [RelayCommand]
-    private async Task SavePostAsync()
+    /// <summary>
+    /// 由编辑状态构造 FrontMatter（委托 FrontMatterBuilder 纯函数）。
+    /// </summary>
+    private FrontMatter BuildFrontMatter() => FrontMatterBuilder.Build(BuildEditState());
+
+    private PostEditState BuildEditState()
     {
-        var project = _projectContext.CurrentProject;
-        if (project is null)
-        {
-            await _dialogService.ShowInfoAsync("未选择项目", "请先选择一个博客项目。");
-            return;
-        }
-
-        FrontMatter frontMatter;
-        try
-        {
-            frontMatter = BuildFrontMatter();
-        }
-        catch (Exception ex)
-        {
-            await _dialogService.ShowInfoAsync("输入无效", ex.Message);
-            return;
-        }
-
-        IsBusy = true;
-        PostOperationResult result;
-        try
-        {
-            if (_originalFilePath is null)
-            {
-                result = await _postCreateUseCase.CreateAsync(project, frontMatter, Body);
-                result = await ResolveConflictAsync(result, project, frontMatter, null);
-            }
-            else
-            {
-                result = await _postEditUseCase.UpdateAsync(project, _originalFilePath, frontMatter, _originalContentHash);
-                result = await ResolveConflictAsync(result, project, frontMatter, _originalFilePath);
-            }
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-
-        if (result.IsModifiedExternally)
-        {
-            var continueSave = await _dialogService.ShowConfirmAsync(
-                "文件已被外部修改",
-                "该博文在磁盘上已被其他程序修改。继续保存将覆盖外部修改。建议选择“取消并刷新”以加载最新内容。",
-                "继续保存",
-                "取消并刷新");
-
-            if (!continueSave)
-            {
-                if (_originalFilePath is not null)
-                {
-                    await LoadPostAsync(_originalFilePath);
-                }
-
-                return;
-            }
-
-            result = _originalFilePath is null
-                ? await _postCreateUseCase.CreateAsync(project, frontMatter, Body)
-                : await _postEditUseCase.UpdateAsync(project, _originalFilePath, frontMatter, null);
-        }
-
-        if (!result.IsSuccess)
-        {
-            if (result.IsConflict && result.Conflict is not null)
-            {
-                // 用户已取消冲突处理
-                return;
-            }
-
-            var message = string.Join(Environment.NewLine, result.Errors.Select(e => e.Message));
-            await _dialogService.ShowInfoAsync("保存失败", message);
-            return;
-        }
-
-        _originalFilePath = result.FilePath;
-        _originalContentHash = await _postEditUseCase.ComputeContentHashAsync(result.FilePath);
-        PageTitle = $"博文 - {Path.GetFileName(result.FilePath)}";
-
-        await _dialogService.ShowInfoAsync("保存成功", $"博文已保存到 {Path.GetRelativePath(project.Path, result.FilePath)}");
-    }
-
-    [RelayCommand]
-    private async Task ImportBodyAsync()
-    {
-        var filePath = await _filePickerService.PickFileAsync();
-        if (string.IsNullOrWhiteSpace(filePath))
-        {
-            return;
-        }
-
-        Body = await _bodyImporter.ImportAsync(filePath);
-    }
-
-    private async Task LoadPostAsync(string filePath)
-    {
-        var loadResult = await _postEditUseCase.LoadAsync(filePath);
-        if (!loadResult.IsSuccess || loadResult.Post is null)
-        {
-            await _dialogService.ShowInfoAsync("打开失败", "无法读取博文文件。");
-            return;
-        }
-
-        var post = loadResult.Post;
-        _originalFilePath = post.FilePath;
-        _originalContentHash = await _postEditUseCase.ComputeContentHashAsync(post.FilePath);
-        PageTitle = $"博文 - {post.FileName}";
-
-        Title = post.FrontMatter.Title;
-        if (post.FrontMatter.Date.HasValue)
-        {
-            var date = post.FrontMatter.Date.Value;
-            SelectedDate = date;
-            SelectedTime = date.DateTime.TimeOfDay;
-            SelectedTimeZone = FormatOffset(date.Offset);
-        }
-        else
-        {
-            SelectedDate = DateTimeOffset.Now;
-            SelectedTime = DateTimeOffset.Now.TimeOfDay;
-            SelectedTimeZone = FormatOffset(DateTimeOffset.Now.Offset);
-        }
-
-        Category1 = post.FrontMatter.Categories.ElementAtOrDefault(0)?.Value ?? string.Empty;
-        Category2 = post.FrontMatter.Categories.ElementAtOrDefault(1)?.Value ?? string.Empty;
-        Tags = string.Join(", ", post.FrontMatter.Tags.Select(t => t.Value));
-        Description = post.FrontMatter.Description ?? string.Empty;
-        Body = post.Body;
-
-        await LoadAuthorsAsync();
-
-        var selectedIds = new HashSet<string>(post.FrontMatter.Authors, StringComparer.Ordinal);
-        foreach (var option in AvailableAuthors)
-        {
-            option.IsSelected = selectedIds.Contains(option.Id);
-        }
-
-        UpdatePreview();
-    }
-
-    private async Task<PostOperationResult> ResolveConflictAsync(
-        PostOperationResult result,
-        BlogProject project,
-        FrontMatter frontMatter,
-        string? originalFilePath)
-    {
-        while (result.IsConflict && result.Conflict is not null)
-        {
-            var kind = await _dialogService.ShowConflictResolutionAsync(
-                Path.GetFileName(result.Conflict.FilePath),
-                result.Conflict.Resolutions);
-
-            if (kind is null)
-            {
-                return result;
-            }
-
-            if (kind == ConflictResolutionKind.Overwrite)
-            {
-                var confirmed = await _dialogService.ShowConfirmAsync("确认覆盖", "确定覆盖现有文件吗？");
-                if (!confirmed)
-                {
-                    return result;
-                }
-            }
-
-            result = originalFilePath is null
-                ? await _postCreateUseCase.CreateAsync(project, frontMatter, Body, kind)
-                : await _postEditUseCase.UpdateAsync(project, originalFilePath, frontMatter, _originalContentHash, kind);
-        }
-
-        return result;
-    }
-
-    private FrontMatter BuildFrontMatter()
-    {
-        var categories = new List<Category>();
-        if (!string.IsNullOrWhiteSpace(Category1))
-        {
-            categories.Add(new Category(Category1));
-        }
-
-        if (!string.IsNullOrWhiteSpace(Category2))
-        {
-            categories.Add(new Category(Category2));
-        }
-
-        var tags = Tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Where(t => !string.IsNullOrWhiteSpace(t))
-            .Select(t => new Tag(t))
-            .ToList();
-
-        var selectedAuthors = AvailableAuthors
+        var selectedAuthorIds = AvailableAuthors
             .Where(a => a.IsSelected)
             .Select(a => a.Id)
             .ToList();
 
-        var date = ComputeDate();
-
-        return new FrontMatter
-        {
-            Title = Title,
-            Date = date,
-            Categories = categories,
-            Tags = tags,
-            Authors = selectedAuthors,
-            Description = string.IsNullOrWhiteSpace(Description) ? null : Description
-        };
-    }
-
-    private DateTimeOffset? ComputeDate()
-    {
-        if (!TimeSpan.TryParseExact(SelectedTimeZone, @"\+hh\:mm", CultureInfo.InvariantCulture, out var offset)
-            && !TimeSpan.TryParseExact(SelectedTimeZone, @"\-hh\:mm", CultureInfo.InvariantCulture, out offset))
-        {
-            offset = DateTimeOffset.Now.Offset;
-        }
-
-        var localDate = SelectedDate.Date.Add(SelectedTime);
-        return new DateTimeOffset(localDate, offset);
+        return new PostEditState(
+            Title,
+            Category1,
+            Category2,
+            Tags,
+            Description,
+            SelectedDate,
+            SelectedTime,
+            SelectedTimeZone,
+            selectedAuthorIds);
     }
 
     private void UpdatePreview()
     {
-        try
-        {
-            var frontMatter = BuildFrontMatter();
-            var slug = SlugGenerator.Generate(frontMatter.Title);
-            var date = ComputeDate();
-            FileNamePreview = date.HasValue
-                ? Post.BuildFileName(date.Value, slug)
-                : $"{slug.Value}.md";
+        var frontMatter = FrontMatterBuilder.Build(BuildEditState());
+        var (fileNamePreview, frontMatterPreview) = FrontMatterBuilder.BuildPreview(frontMatter);
+        FileNamePreview = fileNamePreview;
+        FrontMatterPreview = frontMatterPreview;
+    }
 
-            var yaml = YamlFrontMatterSerializer.Serialize(frontMatter);
-            FrontMatterPreview = $"---{Environment.NewLine}{yaml}{Environment.NewLine}---";
-        }
-        catch
-        {
-            FileNamePreview = "填写标题后生成文件名";
-            FrontMatterPreview = string.Empty;
-        }
+    private void NotifyPostFileChanged()
+    {
+        OnPropertyChanged(nameof(TargetDirectory));
+        InsertImagesCommand.NotifyCanExecuteChanged();
     }
 
     private void OnCurrentProjectChanged(object? sender, EventArgs e)
     {
         _ = LoadAuthorsAsync();
-    }
-
-    private static IReadOnlyList<string> BuildTimeZoneOptions()
-    {
-        var options = new List<string>();
-        for (var minutes = -12 * 60; minutes <= 14 * 60; minutes += 30)
-        {
-            var offset = TimeSpan.FromMinutes(minutes);
-            options.Add(FormatOffset(offset));
-        }
-
-        return options;
-    }
-
-    private static string FormatOffset(TimeSpan offset)
-    {
-        var sign = offset >= TimeSpan.Zero ? "+" : "-";
-        var absolute = offset.Duration();
-        return $"{sign}{absolute.Hours:D2}:{absolute.Minutes:D2}";
-    }
-}
-
-/// <summary>
-/// 作者多选项。
-/// </summary>
-public sealed partial class AuthorOption : ObservableObject
-{
-    private readonly Action _onSelectionChanged;
-
-    public string Id { get; }
-
-    public string DisplayName { get; }
-
-    [ObservableProperty]
-    private bool _isSelected;
-
-    public AuthorOption(Author author, Action onSelectionChanged)
-    {
-        Id = author.Id;
-        DisplayName = $"{author.Id} ({author.Name})";
-        _onSelectionChanged = onSelectionChanged;
-    }
-
-    partial void OnIsSelectedChanged(bool value)
-    {
-        _onSelectionChanged();
+        NotifyPostFileChanged();
     }
 }
