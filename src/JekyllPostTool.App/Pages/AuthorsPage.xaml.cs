@@ -1,5 +1,6 @@
 using JekyllPostTool_App.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
 namespace JekyllPostTool_App.Pages;
@@ -21,5 +22,10 @@ public sealed partial class AuthorsPage : Page
     private void OnLoaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
         ViewModel.LoadAuthorsCommand.Execute(null);
+    }
+
+    private void OnUnloaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        ViewModel.Dispose();
     }
 }

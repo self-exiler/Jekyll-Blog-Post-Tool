@@ -10,7 +10,7 @@ namespace JekyllPostTool_App.ViewModels;
 /// <summary>
 /// 项目页视图模型。
 /// </summary>
-public sealed partial class ProjectPageViewModel : ObservableObject
+public sealed partial class ProjectPageViewModel : ObservableObject, IDisposable
 {
     private readonly IProjectContext _projectContext;
     private readonly DefaultProjectSettingService _settingService;
@@ -108,5 +108,10 @@ public sealed partial class ProjectPageViewModel : ObservableObject
     {
         var project = _projectContext.CurrentProject;
         ProjectPath = project is null ? "未选择项目" : project.Path;
+    }
+
+    public void Dispose()
+    {
+        _projectContext.CurrentProjectChanged -= OnCurrentProjectChanged;
     }
 }

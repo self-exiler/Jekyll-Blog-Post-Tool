@@ -64,4 +64,80 @@ public class MarkdownSplitterTests
         Assert.Contains("title: Hello", yaml);
         Assert.Equal("Body here.", body);
     }
+
+    [Fact]
+    public void TrySplit_BodyContainsHorizontalRule_DoesNotMistakeAsClosingDelimiter()
+    {
+        // 正文中包含独立的 ---（markdown 水平分割线），不应被误判为闭定界符
+        var content = "---\ntitle: Hello\n---\nIntro paragraph.\n\n---\n\nMore body text.";
+
+        var result = MarkdownSplitter.TrySplit(content, out var yaml, out var body);
+
+        Assert.True(result);
+        Assert.Contains("title: Hello", yaml);
+        Assert.StartsWith("Intro paragraph.", body);
+        Assert.Contains("---", body);
+        Assert.Contains("More body text.", body);
+    }
+
+    [Fact]
+    public void TrySplit_BodyLineStartingWithHyphens_DoesNotMatchAsDelimiter()
+    {
+        // "---" 必须独占一行才匹配；行内含 "---" 但前后有其他字符的不匹配
+        var content = "---\ntitle: Test\n---\n---Some text---";
+
+        var result = MarkdownSplitter.TrySplit(content, out var yaml, out var body);
+
+        Assert.True(result);
+        Assert.Contains("title: Test", yaml);
+        Assert.Equal("---Some text---", body);
+    }
+
+    [Fact]
+    public void TrySplit_ClosingDelimiterWithTrailingSpaces_StillMatches()
+    {
+        // 闭定界符行尾带空格也应匹配
+        var content = "---\ntitle: Hello\n---   \nBody.";
+
+        var result = MarkdownSplitter.TrySplit(content, out var yaml, out var body);
+
+        Assert.True(result);
+        Assert.Contains("title: Hello", yaml);
+        Assert.Equal("Body.", body);
+    }
+
+    [Fact]
+    public void TrySplit_YamlValueContainsDashesInValue_DoesNotMistakeAsDelimiter()
+    {
+        // YAML 值中含 "---" 但非独占一行，不应被误判
+        var content = "---\ntitle: A---B\n---\nBody.";
+
+        var result = MarkdownSplitter.TrySplit(content, out var yaml, out var body);
+
+        Assert.True(result);
+        Assert.Contains("title: A---B", yaml);
+        Assert.Equal("Body.", body);
+    }
+
+    [Fact]
+    public void TrySplit_EmptyContent_ReturnsFalse()
+    {
+        var result = MarkdownSplitter.TrySplit("", out var yaml, out var body);
+
+        Assert.False(result);
+        Assert.Equal(string.Empty, yaml);
+        Assert.Equal("", body);
+    }
+
+    [Fact]
+    public void TrySplit_CrllLineEndings_HandledCorrectly()
+    {
+        var content = "---\r\ntitle: Hello\r\n---\r\nBody here.";
+
+        var result = MarkdownSplitter.TrySplit(content, out var yaml, out var body);
+
+        Assert.True(result);
+        Assert.Contains("title: Hello", yaml);
+        Assert.Equal("Body here.", body);
+    }
 }

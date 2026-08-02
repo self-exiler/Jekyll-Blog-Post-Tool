@@ -25,6 +25,8 @@ public sealed partial class PostBodyPage : Page
     /// </summary>
     private async void OnInsertImagesClick(object sender, RoutedEventArgs e)
     {
+        // 确保 Body 与 TextBox 当前文本同步（避免 x:Bind 延迟导致光标位置与 Body 不匹配）
+        ViewModel.Body = BodyTextBox.Text;
         await ViewModel.InsertImagesCommand.ExecuteAsync((int?)BodyTextBox.SelectionStart);
     }
 }

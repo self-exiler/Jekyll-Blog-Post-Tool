@@ -188,6 +188,7 @@ public sealed partial class PostPageViewModel : ObservableObject
     {
         // 标题变化影响 slug → 影响插入图片的可用性与目标目录
         OnPropertyChanged(nameof(TargetDirectory));
+        OnPropertyChanged(nameof(CanInsertImages));
         InsertImagesCommand.NotifyCanExecuteChanged();
     }
 
@@ -261,6 +262,7 @@ public sealed partial class PostPageViewModel : ObservableObject
     private void NotifyPostFileChanged()
     {
         OnPropertyChanged(nameof(TargetDirectory));
+        OnPropertyChanged(nameof(CanInsertImages));
         InsertImagesCommand.NotifyCanExecuteChanged();
     }
 

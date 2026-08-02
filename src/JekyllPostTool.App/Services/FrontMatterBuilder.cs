@@ -25,8 +25,9 @@ public static class FrontMatterBuilder
             categories.Add(new Category(state.Category2));
         }
 
+        // 标签输入用空格分隔；生成博文时序列化为 YAML 数组（标准格式）
         var tags = state.Tags
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Where(t => !string.IsNullOrWhiteSpace(t))
             .Select(t => new Tag(t))
             .ToList();

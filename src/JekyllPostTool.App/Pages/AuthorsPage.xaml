@@ -8,6 +8,7 @@
     xmlns:domain="using:JekyllPostTool.Domain.Authors"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Loaded="OnLoaded"
+    Unloaded="OnUnloaded"
     mc:Ignorable="d">
 
     <Grid RowSpacing="24">

@@ -101,7 +101,7 @@ public sealed partial class PostPageViewModel
             }
 
             // FR-7.4：替换已有标签
-            Tags = string.Join(", ", keywords);
+            Tags = string.Join(" ", keywords);
         }
         finally
         {

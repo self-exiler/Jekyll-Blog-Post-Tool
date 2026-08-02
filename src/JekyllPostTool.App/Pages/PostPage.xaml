@@ -125,7 +125,7 @@
                         HorizontalContentAlignment="Stretch">
                         <StackPanel Spacing="8">
                             <TextBox
-                                PlaceholderText="用逗号分隔多个标签"
+                                PlaceholderText="用空格分隔多个标签"
                                 Text="{x:Bind ViewModel.Tags, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <Button
                                 Command="{x:Bind ViewModel.ExtractKeywordsCommand}"

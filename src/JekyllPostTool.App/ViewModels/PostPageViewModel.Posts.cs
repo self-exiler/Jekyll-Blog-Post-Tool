@@ -144,11 +144,11 @@ public sealed partial class PostPageViewModel
         }
 
         _originalFilePath = result.FilePath;
-        _originalContentHash = await _postEditUseCase.ComputeContentHashAsync(result.FilePath);
+        _originalContentHash = await _postEditUseCase.ComputeContentHashAsync(result.FilePath!);
         PageTitle = $"博文 - {Path.GetFileName(result.FilePath)}";
         NotifyPostFileChanged();
 
-        await _dialogService.ShowInfoAsync("保存成功", $"博文已保存到 {Path.GetRelativePath(project.Path, result.FilePath)}");
+        await _dialogService.ShowInfoAsync("保存成功", $"博文已保存到 {Path.GetRelativePath(project.Path, result.FilePath!)}");
     }
 
     private async Task LoadPostAsync(string filePath)
@@ -179,7 +179,7 @@ public sealed partial class PostPageViewModel
 
         Category1 = post.FrontMatter.Categories.ElementAtOrDefault(0)?.Value ?? string.Empty;
         Category2 = post.FrontMatter.Categories.ElementAtOrDefault(1)?.Value ?? string.Empty;
-        Tags = string.Join(", ", post.FrontMatter.Tags.Select(t => t.Value));
+        Tags = string.Join(" ", post.FrontMatter.Tags.Select(t => t.Value));
         Description = post.FrontMatter.Description ?? string.Empty;
         Body = post.Body;
 

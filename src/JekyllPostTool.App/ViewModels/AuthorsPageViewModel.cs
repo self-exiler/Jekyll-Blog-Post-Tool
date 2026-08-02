@@ -10,7 +10,7 @@ namespace JekyllPostTool_App.ViewModels;
 /// <summary>
 /// 作者管理页视图模型。
 /// </summary>
-public sealed partial class AuthorsPageViewModel : ObservableObject
+public sealed partial class AuthorsPageViewModel : ObservableObject, IDisposable
 {
     private readonly AuthorCrudUseCase _authorUseCase;
     private readonly IProjectContext _projectContext;
@@ -191,5 +191,10 @@ public sealed partial class AuthorsPageViewModel : ObservableObject
     private void OnCurrentProjectChanged(object? sender, EventArgs e)
     {
         _ = LoadAuthorsAsync();
+    }
+
+    public void Dispose()
+    {
+        _projectContext.CurrentProjectChanged -= OnCurrentProjectChanged;
     }
 }

@@ -25,8 +25,8 @@ public static class BodyInsertion
 
         var prefix = body[..insertionIndex.Value];
         var suffix = body[insertionIndex.Value..];
-        var needLeadingNewline = prefix.Length > 0 && !prefix.EndsWith('\n');
-        var needTrailingNewline = suffix.Length > 0 && !suffix.StartsWith('\n');
+        var needLeadingNewline = prefix.Length > 0 && !prefix.EndsWith('\n') && !prefix.EndsWith('\r');
+        var needTrailingNewline = suffix.Length > 0 && !suffix.StartsWith('\n') && !suffix.StartsWith('\r');
         return prefix
             + (needLeadingNewline ? Environment.NewLine : string.Empty)
             + markdown
