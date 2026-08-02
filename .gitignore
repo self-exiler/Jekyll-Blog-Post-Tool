@@ -25,3 +25,5 @@ pkg/
 ## 工具与备份
 .workbuddy/
 *.slnx.bak
+.log
+.binlog
