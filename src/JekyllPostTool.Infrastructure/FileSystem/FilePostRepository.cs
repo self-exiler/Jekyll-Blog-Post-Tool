@@ -13,6 +13,14 @@ public sealed class FilePostRepository : IPostRepository
 
     public bool Exists(string filePath) => File.Exists(filePath);
 
+    public void Delete(string filePath)
+    {
+        if (File.Exists(filePath))
+        {
+            File.Delete(filePath);
+        }
+    }
+
     public async Task<Post?> LoadAsync(string filePath, CancellationToken cancellationToken = default)
     {
         if (!File.Exists(filePath))

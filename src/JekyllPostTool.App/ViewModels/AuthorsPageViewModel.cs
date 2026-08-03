@@ -190,7 +190,9 @@ public sealed partial class AuthorsPageViewModel : ObservableObject, IDisposable
 
     private void OnCurrentProjectChanged(object? sender, EventArgs e)
     {
-        _ = LoadAuthorsAsync();
+        _ = LoadAuthorsAsync().ContinueWith(
+            static t => System.Diagnostics.Debug.WriteLine($"[AuthorsPageVM] 加载作者失败: {t.Exception}"),
+            TaskContinuationOptions.OnlyOnFaulted);
     }
 
     public void Dispose()

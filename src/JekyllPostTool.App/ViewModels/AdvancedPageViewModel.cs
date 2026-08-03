@@ -27,7 +27,9 @@ public sealed partial class AdvancedPageViewModel : ObservableObject
         _aiSettingsService = aiSettingsService;
         _dialogService = dialogService;
 
-        _ = LoadAiSettingsAsync();
+        _ = LoadAiSettingsAsync().ContinueWith(
+            static t => System.Diagnostics.Debug.WriteLine($"[AdvancedPageVM] 加载 AI 设置失败: {t.Exception}"),
+            TaskContinuationOptions.OnlyOnFaulted);
     }
 
     [RelayCommand]

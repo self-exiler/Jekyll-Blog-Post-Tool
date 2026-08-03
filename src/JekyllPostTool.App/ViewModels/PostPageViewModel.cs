@@ -5,6 +5,7 @@ using JekyllPostTool.Application.Ai;
 using JekyllPostTool.Application.Authors;
 using JekyllPostTool.Application.Posts;
 using JekyllPostTool.Domain.Posts;
+using JekyllPostTool.Infrastructure.FileSystem;
 using JekyllPostTool.Infrastructure.Import;
 using JekyllPostTool_App.Services;
 using Microsoft.UI.Xaml;
@@ -268,7 +269,9 @@ public sealed partial class PostPageViewModel : ObservableObject
 
     private void OnCurrentProjectChanged(object? sender, EventArgs e)
     {
-        _ = LoadAuthorsAsync();
+        _ = LoadAuthorsAsync().ContinueWith(
+            static t => System.Diagnostics.Debug.WriteLine($"[PostPageVM] 加载作者失败: {t.Exception}"),
+            TaskContinuationOptions.OnlyOnFaulted);
         NotifyPostFileChanged();
     }
 }

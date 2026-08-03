@@ -36,11 +36,20 @@ public static class TimeZoneFormatter
     /// </summary>
     public static TimeSpan ParseOrLocal(string? text)
     {
-        if (!string.IsNullOrWhiteSpace(text)
-            && (TimeSpan.TryParseExact(text, @"\+hh\:mm", CultureInfo.InvariantCulture, out var offset)
-                || TimeSpan.TryParseExact(text, @"\-hh\:mm", CultureInfo.InvariantCulture, out offset)))
+        if (string.IsNullOrWhiteSpace(text) || text.Length < 6)
         {
-            return offset;
+            return DateTimeOffset.Now.Offset;
+        }
+
+        var sign = text[0];
+        if (sign is not '+' and not '-')
+        {
+            return DateTimeOffset.Now.Offset;
+        }
+
+        if (TimeSpan.TryParseExact(text[1..], @"hh\:mm", CultureInfo.InvariantCulture, out var absolute))
+        {
+            return sign == '-' ? -absolute : absolute;
         }
 
         return DateTimeOffset.Now.Offset;

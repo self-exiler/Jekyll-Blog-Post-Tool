@@ -3,7 +3,7 @@ using System.Text;
 using JekyllPostTool.Domain.Posts;
 using JekyllPostTool.Domain.Projects;
 
-namespace JekyllPostTool.Application.Posts;
+namespace JekyllPostTool.Infrastructure.FileSystem;
 
 /// <summary>
 /// 将本地图片复制到博文对应的资源目录，并生成 markdown 引用追加到正文末尾。
@@ -19,7 +19,7 @@ public sealed class ImageInserter
     /// <param name="sourceImagePaths">源图片绝对路径列表。</param>
     /// <param name="alt">统一的 alt 文本，默认空字符串。</param>
     /// <returns>追加到正文末尾的 markdown 引用文本（含换行符分隔）；无成功插入时返回空字符串。</returns>
-    public async Task<string> InsertAsync(
+    public Task<string> InsertAsync(
         BlogProject project,
         string postSlug,
         IReadOnlyList<string> sourceImagePaths,
@@ -51,7 +51,7 @@ public sealed class ImageInserter
             markdownBuilder.AppendLine($"![{alt}](/assets/img/{postSlug}/{destFileName})");
         }
 
-        return markdownBuilder.ToString();
+        return Task.FromResult(markdownBuilder.ToString());
     }
 
     /// <summary>

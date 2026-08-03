@@ -7,6 +7,8 @@ public interface IPostRepository
 {
     bool Exists(string filePath);
 
+    void Delete(string filePath);
+
     Task<Post?> LoadAsync(string filePath, CancellationToken cancellationToken = default);
 
     Task SaveAsync(Post post, CancellationToken cancellationToken = default);

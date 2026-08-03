@@ -87,7 +87,7 @@ public sealed class PostEditUseCase
 
         if (!string.Equals(originalFilePath, newFilePath, StringComparison.OrdinalIgnoreCase))
         {
-            File.Delete(originalFilePath);
+            _postRepository.Delete(originalFilePath);
         }
 
         return PostOperationResult.Success(newFilePath);

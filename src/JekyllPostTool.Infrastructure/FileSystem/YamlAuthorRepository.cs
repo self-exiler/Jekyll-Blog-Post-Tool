@@ -27,18 +27,18 @@ public sealed class YamlAuthorRepository : IAuthorRepository
         _pathResolver = pathResolver;
     }
 
-    public Task<IReadOnlyList<Author>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Author>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         var filePath = _pathResolver();
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
         {
-            return Task.FromResult<IReadOnlyList<Author>>(Array.Empty<Author>());
+            return Array.Empty<Author>();
         }
 
-        var yaml = File.ReadAllText(filePath, Encoding.UTF8);
+        var yaml = await File.ReadAllTextAsync(filePath, Encoding.UTF8, cancellationToken);
         if (string.IsNullOrWhiteSpace(yaml))
         {
-            return Task.FromResult<IReadOnlyList<Author>>(Array.Empty<Author>());
+            return Array.Empty<Author>();
         }
 
         var dtos = Deserializer.Deserialize<Dictionary<string, AuthorDto>>(yaml);
@@ -46,10 +46,10 @@ public sealed class YamlAuthorRepository : IAuthorRepository
             .Where(kvp => kvp.Value is { Name: not null })
             .Select(kvp => new Author(kvp.Key, kvp.Value.Name!, kvp.Value.Twitter, kvp.Value.Url))
             .ToList();
-        return Task.FromResult<IReadOnlyList<Author>>(authors);
+        return authors;
     }
 
-    public Task SaveAsync(IReadOnlyList<Author> authors, CancellationToken cancellationToken = default)
+    public async Task SaveAsync(IReadOnlyList<Author> authors, CancellationToken cancellationToken = default)
     {
         var filePath = _pathResolver() ?? throw new InvalidOperationException("未选择博客项目，无法保存作者信息。");
         Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
@@ -60,9 +60,7 @@ public sealed class YamlAuthorRepository : IAuthorRepository
 
         var yaml = Serializer.Serialize(dtos);
         // UTF-8 无 BOM（ADR-010）
-        File.WriteAllText(filePath, yaml, new UTF8Encoding(false));
-
-        return Task.CompletedTask;
+        await File.WriteAllTextAsync(filePath, yaml, new UTF8Encoding(false), cancellationToken);
     }
 
     private sealed class AuthorDto

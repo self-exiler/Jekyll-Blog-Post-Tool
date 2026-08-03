@@ -1,4 +1,4 @@
-using JekyllPostTool.Application.Posts;
+using JekyllPostTool.Infrastructure.FileSystem;
 using JekyllPostTool.Domain.Projects;
 
 namespace JekyllPostTool.Application.Tests;

@@ -20,6 +20,8 @@ public class PostCreateUseCaseTests
 
         public bool Exists(string filePath) => _existingFiles.Contains(filePath);
 
+        public void Delete(string filePath) => _existingFiles.Remove(filePath);
+
         public Task<Post?> LoadAsync(string filePath, CancellationToken ct = default)
             => Task.FromResult<Post?>(null);
 
