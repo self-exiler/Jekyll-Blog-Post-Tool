@@ -1,8 +1,5 @@
 {
   "profiles": {
-    "JekyllPostTool.App (Package)": {
-      "commandName": "MsixPackage"
-    },
     "JekyllPostTool.App (Unpackaged)": {
       "commandName": "Project"
     }

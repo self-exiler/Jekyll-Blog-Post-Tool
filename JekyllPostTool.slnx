@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/JekyllPostTool.App/JekyllPostTool.App.csproj">
       <Platform Solution="Debug|*" Project="x64" />
+      <Deploy Solution="Debug|*" />
     </Project>
     <Project Path="src/JekyllPostTool.Application/JekyllPostTool.Application.csproj" />
     <Project Path="src/JekyllPostTool.Domain/JekyllPostTool.Domain.csproj" />
@@ -12,4 +13,5 @@
     <Project Path="tests/JekyllPostTool.Domain.Tests/JekyllPostTool.Domain.Tests.csproj" />
     <Project Path="tests/JekyllPostTool.Infrastructure.Tests/JekyllPostTool.Infrastructure.Tests.csproj" />
   </Folder>
+  <Project Path="Setup/Setup.vdproj" Type="Installer" />
 </Solution>
