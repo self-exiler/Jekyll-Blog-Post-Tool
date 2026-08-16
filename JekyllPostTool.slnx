@@ -13,5 +13,4 @@
     <Project Path="tests/JekyllPostTool.Domain.Tests/JekyllPostTool.Domain.Tests.csproj" />
     <Project Path="tests/JekyllPostTool.Infrastructure.Tests/JekyllPostTool.Infrastructure.Tests.csproj" />
   </Folder>
-  <Project Path="Setup/Setup.vdproj" Type="Installer" />
 </Solution>
