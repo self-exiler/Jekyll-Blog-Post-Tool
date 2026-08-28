@@ -71,16 +71,6 @@ public static class MarkdownSplitter
         return true;
     }
 
-    private static string JoinLines(string[] lines, int start, int end)
-    {
-        if (start >= end)
-        {
-            return string.Empty;
-        }
-
-        var count = end - start;
-        var slice = new string[count];
-        Array.Copy(lines, start, slice, 0, count);
-        return string.Join('\n', slice);
-    }
+    private static string JoinLines(string[] lines, int start, int end) =>
+        start >= end ? string.Empty : string.Join('\n', lines[start..end]);
 }

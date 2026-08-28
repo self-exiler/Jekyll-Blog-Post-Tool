@@ -37,7 +37,7 @@
 `src/JekyllPostTool.App` 的全部图标资源已由本目录 SVG 生成，可直接用脚本重新生成：
 
 ```bash
-pip install pillow numpy
+pip install resvg-py pillow
 python Assets/build_icons.py            # 覆盖写入 src/JekyllPostTool.App/Assets/
 python Assets/build_icons.py --preview  # 仅生成预览拼图，不写入项目
 ```

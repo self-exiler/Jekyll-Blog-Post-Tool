@@ -2,15 +2,12 @@ using JekyllPostTool.Application.Ai;
 using JekyllPostTool.Application.Authors;
 using JekyllPostTool.Application.Posts;
 using JekyllPostTool.Application.Projects;
-using JekyllPostTool.Domain.Authors;
 using JekyllPostTool.Domain.Posts;
 using JekyllPostTool.Domain.Projects;
 using JekyllPostTool.Infrastructure.Ai;
 using JekyllPostTool.Infrastructure.FileSystem;
-using JekyllPostTool.Infrastructure.Import;
 using JekyllPostTool_App.Services;
 using JekyllPostTool_App.ViewModels;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 
 namespace JekyllPostTool_App;
@@ -22,14 +19,30 @@ public partial class App : Application
 {
     public static new App Current => (App)Application.Current;
 
-    public IServiceProvider Services { get; private set; } = null!;
-
     private MainWindow? _mainWindow;
 
     // ADR-009: %APPDATA%\JekyllPostTool\（Roaming）
     private static readonly string AppDataDir = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "JekyllPostTool");
+
+    // 手写组合根：全部单例、无生命周期差异，容器注册仪式无收益
+    public ProjectContext ProjectContext { get; } = new();
+    public DefaultProjectSettingService SettingService { get; } = new(AppDataDir);
+    public AiSettingsService AiSettingsService { get; } = new(AppDataDir);
+    public IPostRepository PostRepository { get; } = new FilePostRepository();
+    public ImageInserter ImageInserter { get; } = new();
+
+    // 依赖窗口实例，在 OnLaunched 装配
+    public WinUIDialogService DialogService { get; private set; } = null!;
+    public WinUIFilePickerService FilePickerService { get; private set; } = null!;
+    public YamlAuthorRepository AuthorRepository { get; private set; } = null!;
+    public OpenAiService AiService { get; private set; } = null!;
+
+    /// <summary>博文头信息页与博文正文页共享同一份编辑状态。</summary>
+    public PostPageViewModel PostPageViewModel { get; private set; } = null!;
+
+    public AuthorCrudUseCase AuthorCrudUseCase { get; private set; } = null!;
 
     public App()
     {
@@ -46,61 +59,51 @@ public partial class App : Application
         // 先创建窗口（MainPage.Loaded 不会在激活前触发）
         _mainWindow = new MainWindow();
 
-        // 注册所有服务（含窗口实例）
-        var services = new ServiceCollection();
-        ConfigureServices(services);
-        services.AddSingleton(_mainWindow);
-        services.AddSingleton<IDialogService>(_ => new WinUIDialogService(_mainWindow));
-        services.AddSingleton<IFilePickerService>(_ => new WinUIFilePickerService(_mainWindow));
-        Services = services.BuildServiceProvider();
+        DialogService = new WinUIDialogService(_mainWindow);
+        FilePickerService = new WinUIFilePickerService(_mainWindow);
 
-        // 激活窗口后 MainPage.Loaded 才触发 → 此时 Services 已就绪
+        // 作者路径经惰性解析器读取，支持运行时切换项目
+        AuthorRepository = new YamlAuthorRepository(() => ProjectContext.CurrentProject?.AuthorsFilePath);
+
+        // AI 服务：共享 HttpClient 实例，配置在每次调用时读取（支持运行时修改）
+        AiService = new OpenAiService(new HttpClient(), AiSettingsService);
+
+        var conflictResolver = new FilenameConflictResolver(PostRepository);
+        AuthorCrudUseCase = new AuthorCrudUseCase(AuthorRepository);
+
+        PostPageViewModel = new PostPageViewModel(
+            ProjectContext,
+            new PostSaveUseCase(PostRepository, AuthorRepository, conflictResolver),
+            PostRepository,
+            AuthorRepository,
+            FilePickerService,
+            DialogService,
+            AiService,
+            ImageInserter);
+
+        // 激活窗口后 MainPage.Loaded 才触发 → 此时依赖已就绪
         _mainWindow.Activate();
 
         _ = InitializeProjectAsync();
     }
 
-    private static void ConfigureServices(IServiceCollection services)
-    {
-        services.AddSingleton<IPostRepository, FilePostRepository>();
-        services.AddSingleton<IProjectContext, ProjectContext>();
-        services.AddSingleton<IAuthorRepository>(sp => new YamlAuthorRepository(
-            () => sp.GetRequiredService<IProjectContext>().CurrentProject?.AuthorsFilePath));
+    public ProjectPageViewModel CreateProjectPageViewModel() =>
+        new(ProjectContext, SettingService, FilePickerService, DialogService);
 
-        services.AddSingleton(new DefaultProjectSettingService(AppDataDir));
-        services.AddSingleton(new AiSettingsService(AppDataDir));
+    public AuthorsPageViewModel CreateAuthorsPageViewModel() =>
+        new(AuthorCrudUseCase, AuthorRepository, ProjectContext, DialogService);
 
-        // AI 服务：共享 HttpClient 实例，配置在每次调用时读取（支持运行时修改）
-        services.AddSingleton<HttpClient>();
-        services.AddSingleton<IAiService>(sp => new OpenAiService(
-            sp.GetRequiredService<HttpClient>(),
-            sp.GetRequiredService<AiSettingsService>()));
-
-        services.AddTransient<FilenameConflictResolver>();
-        services.AddTransient<PostCreateUseCase>();
-        services.AddTransient<PostEditUseCase>();
-        services.AddTransient<AuthorCrudUseCase>();
-        services.AddTransient<MarkdownBodyImporter>();
-        services.AddTransient<ImageInserter>();
-
-        services.AddTransient<ProjectPageViewModel>();
-        services.AddTransient<AuthorsPageViewModel>();
-        // Singleton：博文头信息页与博文正文页共享同一份编辑状态
-        services.AddSingleton<PostPageViewModel>();
-        services.AddTransient<AdvancedPageViewModel>();
-    }
+    public AdvancedPageViewModel CreateAdvancedPageViewModel() =>
+        new(AiSettingsService, DialogService);
 
     private async Task InitializeProjectAsync()
     {
         try
         {
-            var projectContext = Services.GetRequiredService<IProjectContext>();
-            var settingsService = Services.GetRequiredService<DefaultProjectSettingService>();
-
-            var defaultPath = await settingsService.GetAsync();
+            var defaultPath = await SettingService.GetAsync();
             if (!string.IsNullOrWhiteSpace(defaultPath) && Directory.Exists(defaultPath))
             {
-                projectContext.CurrentProject = new BlogProject(defaultPath);
+                ProjectContext.CurrentProject = new BlogProject(defaultPath);
             }
         }
         catch

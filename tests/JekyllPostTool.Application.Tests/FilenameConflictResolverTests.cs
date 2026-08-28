@@ -21,8 +21,8 @@ public class FilenameConflictResolverTests
 
         public void Delete(string filePath) => _existingFiles.Remove(filePath);
 
-        public Task<Post?> LoadAsync(string filePath, CancellationToken ct = default)
-            => Task.FromResult<Post?>(null);
+        public Task<PostRead?> ReadAsync(string filePath, CancellationToken ct = default)
+            => Task.FromResult<PostRead?>(null);
 
         public Task SaveAsync(Post post, CancellationToken ct = default)
             => Task.CompletedTask;
@@ -40,10 +40,11 @@ public class FilenameConflictResolverTests
         var result = resolver.Check(Project, "2026-07-28-test.md");
 
         Assert.False(result.HasConflict);
+        Assert.Null(result.AutoSuffix);
     }
 
     [Fact]
-    public void Check_FileExists_ReturnsConflictWithTwoResolutions()
+    public void Check_FileExists_ReturnsConflictWithAutoSuffix()
     {
         var repo = new StubPostRepository();
         repo.AddExistingFile(Path.Combine(Project.PostsDirectory, "2026-07-28-test.md"));
@@ -52,7 +53,7 @@ public class FilenameConflictResolverTests
         var result = resolver.Check(Project, "2026-07-28-test.md");
 
         Assert.True(result.HasConflict);
-        Assert.Equal(2, result.Resolutions.Count);
+        Assert.Equal(1, result.AutoSuffix);
     }
 
     [Fact]
@@ -66,8 +67,7 @@ public class FilenameConflictResolverTests
 
         var result = resolver.Check(Project, "2026-07-28-test.md");
 
-        var autoSuffix = result.Resolutions.First(r => r.Kind == ConflictResolutionKind.AutoSuffix);
-        Assert.Equal(2, autoSuffix.Suffix);
+        Assert.Equal(2, result.AutoSuffix);
     }
 
     [Fact]
@@ -109,7 +109,7 @@ public class FilenameConflictResolverTests
     }
 
     [Fact]
-    public void ResolveFilePath_Null_Throws()
+    public void ResolveFilePath_ConflictWithoutResolution_Throws()
     {
         var repo = new StubPostRepository();
         repo.AddExistingFile(Path.Combine(Project.PostsDirectory, "2026-07-28-test.md"));

@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace JekyllPostTool_App.Services;
+namespace JekyllPostTool.Application.Posts;
 
 /// <summary>
 /// 时区偏移量格式化（±hh:mm）与候选列表生成。无状态纯函数。
@@ -22,14 +22,10 @@ public static class TimeZoneFormatter
     }
 
     /// <summary>
-    /// 把偏移量格式化为 ±hh:mm。
+    /// 把偏移量格式化为 ±hh:mm（Invariant：符号与数字不受当前文化影响）。
     /// </summary>
-    public static string Format(TimeSpan offset)
-    {
-        var sign = offset >= TimeSpan.Zero ? "+" : "-";
-        var absolute = offset.Duration();
-        return $"{sign}{absolute.Hours:D2}:{absolute.Minutes:D2}";
-    }
+    public static string Format(TimeSpan offset) =>
+        (offset < TimeSpan.Zero ? "-" : "+") + offset.Duration().ToString(@"hh\:mm", CultureInfo.InvariantCulture);
 
     /// <summary>
     /// 解析 ±hh:mm；失败时回退到本地时区偏移。

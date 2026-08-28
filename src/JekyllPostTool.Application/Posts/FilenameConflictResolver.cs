@@ -6,112 +6,55 @@ namespace JekyllPostTool.Application.Posts;
 /// <summary>
 /// 检测博文文件名冲突并提供候选方案。
 /// </summary>
-public sealed class FilenameConflictResolver
+public sealed class FilenameConflictResolver(IPostRepository postRepository)
 {
-    private readonly IPostRepository _postRepository;
-
-    public FilenameConflictResolver(IPostRepository postRepository)
-    {
-        _postRepository = postRepository;
-    }
-
     public ConflictResult Check(BlogProject project, string fileName)
     {
-        var filePath = System.IO.Path.Combine(project.PostsDirectory, fileName);
-        if (!_postRepository.Exists(filePath))
-        {
-            return ConflictResult.NoConflict(filePath);
-        }
-
-        var candidates = new List<ConflictResolution>
-        {
-            ConflictResolution.AutoSuffix(FindNextAvailableSuffix(project, fileName)),
-            ConflictResolution.Overwrite
-        };
-
-        return ConflictResult.Conflict(filePath, candidates);
+        var filePath = Path.Combine(project.PostsDirectory, fileName);
+        return postRepository.Exists(filePath)
+            ? new ConflictResult(filePath, FindNextAvailableSuffix(project, fileName))
+            : new ConflictResult(filePath, null);
     }
 
     private int FindNextAvailableSuffix(BlogProject project, string fileName)
     {
-        var nameWithoutExtension = System.IO.Path.GetFileNameWithoutExtension(fileName);
-        var extension = System.IO.Path.GetExtension(fileName);
+        var nameWithoutExtension = Path.GetFileNameWithoutExtension(fileName);
+        var extension = Path.GetExtension(fileName);
         var suffix = 1;
 
-        while (true)
+        while (postRepository.Exists(Path.Combine(
+                   project.PostsDirectory, $"{nameWithoutExtension}-{suffix}{extension}")))
         {
-            var candidate = $"{nameWithoutExtension}-{suffix}{extension}";
-            var candidatePath = System.IO.Path.Combine(project.PostsDirectory, candidate);
-            if (!_postRepository.Exists(candidatePath))
-            {
-                return suffix;
-            }
-
             suffix++;
         }
+
+        return suffix;
     }
 }
 
-public sealed class ConflictResult
+/// <summary>
+/// 冲突检测结果：<paramref name="autoSuffix"/> 为冲突时首个可用序号，无冲突时为 null。
+/// </summary>
+public sealed record ConflictResult(string FilePath, int? AutoSuffix)
 {
-    public bool HasConflict { get; }
+    public bool HasConflict => AutoSuffix.HasValue;
 
-    public string FilePath { get; }
-
-    public IReadOnlyList<ConflictResolution> Resolutions { get; }
-
-    private ConflictResult(bool hasConflict, string filePath, IReadOnlyList<ConflictResolution> resolutions)
+    public string ResolveFilePath(ConflictResolutionKind? resolution) => (resolution, HasConflict) switch
     {
-        HasConflict = hasConflict;
-        FilePath = filePath;
-        Resolutions = resolutions;
-    }
-
-    public static ConflictResult NoConflict(string filePath) => new(false, filePath, Array.Empty<ConflictResolution>());
-
-    public static ConflictResult Conflict(string filePath, IReadOnlyList<ConflictResolution> resolutions) =>
-        new(true, filePath, resolutions);
-
-    public string ResolveFilePath(ConflictResolutionKind? resolution)
-    {
-        if (!HasConflict)
-        {
-            return FilePath;
-        }
-
-        return resolution switch
-        {
-            ConflictResolutionKind.AutoSuffix => AppendSuffix(FilePath, Resolutions.First(r => r.Kind == ConflictResolutionKind.AutoSuffix).Suffix!.Value),
-            ConflictResolutionKind.Overwrite => FilePath,
-            null => throw new InvalidOperationException("需要选择冲突处理方式"),
-            _ => throw new InvalidOperationException("不支持的冲突处理方式")
-        };
-    }
+        (_, false) => FilePath,
+        (ConflictResolutionKind.AutoSuffix, true) => AppendSuffix(FilePath, AutoSuffix!.Value),
+        (ConflictResolutionKind.Overwrite, _) => FilePath,
+        (null, _) => throw new InvalidOperationException("需要选择冲突处理方式"),
+        _ => throw new InvalidOperationException("不支持的冲突处理方式")
+    };
 
     private static string AppendSuffix(string filePath, int suffix)
     {
-        var directory = System.IO.Path.GetDirectoryName(filePath)!;
-        var nameWithoutExtension = System.IO.Path.GetFileNameWithoutExtension(filePath);
-        var extension = System.IO.Path.GetExtension(filePath);
-        return System.IO.Path.Combine(directory, $"{nameWithoutExtension}-{suffix}{extension}");
+        var directory = Path.GetDirectoryName(filePath)!;
+        var nameWithoutExtension = Path.GetFileNameWithoutExtension(filePath);
+        var extension = Path.GetExtension(filePath);
+        return Path.Combine(directory, $"{nameWithoutExtension}-{suffix}{extension}");
     }
-}
-
-public sealed class ConflictResolution
-{
-    public ConflictResolutionKind Kind { get; }
-
-    public int? Suffix { get; }
-
-    private ConflictResolution(ConflictResolutionKind kind, int? suffix = null)
-    {
-        Kind = kind;
-        Suffix = suffix;
-    }
-
-    public static ConflictResolution AutoSuffix(int suffix) => new(ConflictResolutionKind.AutoSuffix, suffix);
-
-    public static ConflictResolution Overwrite => new(ConflictResolutionKind.Overwrite);
 }
 
 public enum ConflictResolutionKind

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using JekyllPostTool.Application.Authors;
@@ -13,8 +14,9 @@ namespace JekyllPostTool_App.ViewModels;
 public sealed partial class AuthorsPageViewModel : ObservableObject, IDisposable
 {
     private readonly AuthorCrudUseCase _authorUseCase;
-    private readonly IProjectContext _projectContext;
-    private readonly IDialogService _dialogService;
+    private readonly IAuthorRepository _authorRepository;
+    private readonly ProjectContext _projectContext;
+    private readonly WinUIDialogService _dialogService;
 
     [ObservableProperty]
     private ObservableCollection<Author> _authors = new();
@@ -45,14 +47,17 @@ public sealed partial class AuthorsPageViewModel : ObservableObject, IDisposable
 
     public AuthorsPageViewModel(
         AuthorCrudUseCase authorUseCase,
-        IProjectContext projectContext,
-        IDialogService dialogService)
+        IAuthorRepository authorRepository,
+        ProjectContext projectContext,
+        WinUIDialogService dialogService)
     {
         _authorUseCase = authorUseCase;
+        _authorRepository = authorRepository;
         _projectContext = projectContext;
         _dialogService = dialogService;
 
-        _projectContext.CurrentProjectChanged += OnCurrentProjectChanged;
+        // 唯一通知机制：PropertyChanged(nameof(CurrentProject))
+        _projectContext.PropertyChanged += OnCurrentProjectChanged;
     }
 
     partial void OnSelectedAuthorChanged(Author? value)
@@ -77,10 +82,18 @@ public sealed partial class AuthorsPageViewModel : ObservableObject, IDisposable
             return;
         }
 
-        var authors = await _authorUseCase.ListAsync();
-        foreach (var author in authors)
+        try
         {
-            Authors.Add(author);
+            var authors = await _authorRepository.GetAllAsync();
+            foreach (var author in authors)
+            {
+                Authors.Add(author);
+            }
+        }
+        catch (Exception ex)
+        {
+            // authors.yml 损坏或被占用时不让异常静默（作者页不再永远空白无提示）
+            await _dialogService.ShowInfoAsync("加载作者失败", ex.Message);
         }
 
         ClearSelection();
@@ -188,8 +201,13 @@ public sealed partial class AuthorsPageViewModel : ObservableObject, IDisposable
         IsNewAuthor = false;
     }
 
-    private void OnCurrentProjectChanged(object? sender, EventArgs e)
+    private void OnCurrentProjectChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName != nameof(ProjectContext.CurrentProject))
+        {
+            return;
+        }
+
         _ = LoadAuthorsAsync().ContinueWith(
             static t => System.Diagnostics.Debug.WriteLine($"[AuthorsPageVM] 加载作者失败: {t.Exception}"),
             TaskContinuationOptions.OnlyOnFaulted);
@@ -197,6 +215,6 @@ public sealed partial class AuthorsPageViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
-        _projectContext.CurrentProjectChanged -= OnCurrentProjectChanged;
+        _projectContext.PropertyChanged -= OnCurrentProjectChanged;
     }
 }

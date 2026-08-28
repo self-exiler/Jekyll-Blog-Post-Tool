@@ -1,5 +1,4 @@
 using JekyllPostTool_App.ViewModels;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -16,7 +15,7 @@ public sealed partial class PostBodyPage : Page
     {
         InitializeComponent();
         // 与 PostPage 共享同一 Singleton 实例
-        ViewModel = App.Current.Services.GetRequiredService<PostPageViewModel>();
+        ViewModel = App.Current.PostPageViewModel;
         DataContext = ViewModel;
     }
 

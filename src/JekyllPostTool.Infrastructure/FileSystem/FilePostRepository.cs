@@ -1,11 +1,11 @@
 using System.Text;
 using JekyllPostTool.Domain.Posts;
-using JekyllPostTool.Infrastructure.Yaml;
+using JekyllPostTool.Infrastructure.Posts;
 
 namespace JekyllPostTool.Infrastructure.FileSystem;
 
 /// <summary>
-/// 基于文件系统的博文仓储实现。
+/// 基于文件系统的博文仓储实现：纯文件 IO，格式细节全部委托 <see cref="PostFileFormat"/>。
 /// </summary>
 public sealed class FilePostRepository : IPostRepository
 {
@@ -21,18 +21,16 @@ public sealed class FilePostRepository : IPostRepository
         }
     }
 
-    public async Task<Post?> LoadAsync(string filePath, CancellationToken cancellationToken = default)
+    public async Task<PostRead?> ReadAsync(string filePath, CancellationToken cancellationToken = default)
     {
-        if (!File.Exists(filePath))
+        var content = await ReadAllTextAsync(filePath, cancellationToken);
+        if (content is null)
         {
             return null;
         }
 
-        var content = await File.ReadAllTextAsync(filePath, Encoding.UTF8, cancellationToken);
-        MarkdownSplitter.TrySplit(content, out var frontMatterYaml, out var body);
-        var frontMatter = YamlFrontMatterParser.Parse(frontMatterYaml);
-
-        return new Post(filePath, frontMatter, body);
+        var (frontMatter, body) = PostFileFormat.Parse(content);
+        return new PostRead(filePath, content, frontMatter, body);
     }
 
     public async Task SaveAsync(Post post, CancellationToken cancellationToken = default)
@@ -43,13 +41,28 @@ public sealed class FilePostRepository : IPostRepository
             Directory.CreateDirectory(directory);
         }
 
-        var frontMatterYaml = YamlFrontMatterSerializer.Serialize(post.FrontMatter);
-        var content = $"---{Environment.NewLine}{frontMatterYaml}{Environment.NewLine}---{Environment.NewLine}{post.Body}";
+        var content = PostFileFormat.Format(post.FrontMatter, post.Body);
 
-        // 统一转换为 LF
-        content = content.Replace("\r\n", "\n");
+        // 先写临时文件再原子替换：写一半崩溃不会损坏已有博文
+        var tempPath = post.FilePath + ".tmp";
+        try
+        {
+            await File.WriteAllTextAsync(tempPath, content, OutputEncoding, cancellationToken);
 
-        await File.WriteAllTextAsync(post.FilePath, content, OutputEncoding, cancellationToken);
+            if (File.Exists(post.FilePath))
+            {
+                File.Replace(tempPath, post.FilePath, destinationBackupFileName: null);
+            }
+            else
+            {
+                File.Move(tempPath, post.FilePath);
+            }
+        }
+        catch
+        {
+            TryDelete(tempPath);
+            throw;
+        }
     }
 
     public async Task<string?> ReadAllTextAsync(string filePath, CancellationToken cancellationToken = default)
@@ -60,5 +73,10 @@ public sealed class FilePostRepository : IPostRepository
         }
 
         return await File.ReadAllTextAsync(filePath, Encoding.UTF8, cancellationToken);
+    }
+
+    private static void TryDelete(string path)
+    {
+        try { File.Delete(path); } catch { /* 清理失败时忽略 */ }
     }
 }

@@ -5,22 +5,15 @@ using Microsoft.UI.Xaml.Controls;
 namespace JekyllPostTool_App.Services;
 
 /// <summary>
-/// 基于 WinUI ContentDialog 的对话框服务实现。
+/// 基于 WinUI ContentDialog 的对话框服务。
 /// </summary>
-public sealed class WinUIDialogService : IDialogService
+public sealed class WinUIDialogService(Window window)
 {
-    private readonly Window _window;
-
-    public WinUIDialogService(Window window)
-    {
-        _window = window;
-    }
-
     private XamlRoot XamlRoot
     {
         get
         {
-            var root = ((FrameworkElement)_window.Content).XamlRoot;
+            var root = ((FrameworkElement)window.Content).XamlRoot;
             if (root is null)
             {
                 throw new InvalidOperationException("XamlRoot 尚未初始化，无法显示对话框。");
@@ -58,25 +51,24 @@ public sealed class WinUIDialogService : IDialogService
         return result == ContentDialogResult.Primary;
     }
 
-    public async Task<ConflictResolutionKind?> ShowConflictResolutionAsync(string fileName, IEnumerable<ConflictResolution> resolutions)
+    /// <summary>
+    /// 显示文件名冲突处理选项，返回用户选择的处理方式；取消返回 null。
+    /// </summary>
+    public async Task<ConflictResolutionKind?> ShowConflictResolutionAsync(string fileName, int? autoSuffix)
     {
         var radioButtons = new RadioButtons();
-        var resolutionList = resolutions.ToList();
 
-        foreach (var resolution in resolutionList)
+        radioButtons.Items.Add(new RadioButton
         {
-            var label = resolution.Kind switch
-            {
-                ConflictResolutionKind.AutoSuffix => $"自动加序号后缀 ({resolution.Suffix})",
-                ConflictResolutionKind.Overwrite => "覆盖现有文件",
-                _ => resolution.Kind.ToString()
-            };
-
-            radioButtons.Items.Add(new RadioButton { Content = label, Tag = resolution.Kind });
-        }
-
-        var defaultIndex = resolutionList.FindIndex(r => r.Kind == ConflictResolutionKind.AutoSuffix);
-        radioButtons.SelectedIndex = defaultIndex >= 0 ? defaultIndex : 0;
+            Content = autoSuffix.HasValue ? $"自动加序号后缀 ({autoSuffix})" : "自动加序号后缀",
+            Tag = ConflictResolutionKind.AutoSuffix
+        });
+        radioButtons.Items.Add(new RadioButton
+        {
+            Content = "覆盖现有文件",
+            Tag = ConflictResolutionKind.Overwrite
+        });
+        radioButtons.SelectedIndex = 0;
 
         var dialog = new ContentDialog
         {

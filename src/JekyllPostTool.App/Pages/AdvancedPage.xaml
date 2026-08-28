@@ -56,22 +56,6 @@
                         </ct:SettingsCard>
                     </ct:SettingsExpander.Items>
                 </ct:SettingsExpander>
-
-                <TextBlock
-                    Style="{StaticResource BodyTextBlockStyle}"
-                    Text="更多功能"
-                    Margin="0,8,0,0" />
-
-                <Grid ColumnSpacing="12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <ct:SettingsCard Grid.Column="0" Header="📅 敬请期待" />
-                    <ct:SettingsCard Grid.Column="1" Header="🔗 敬请期待" />
-                    <ct:SettingsCard Grid.Column="2" Header="🎯 敬请期待" />
-                </Grid>
             </StackPanel>
         </ScrollViewer>
     </Grid>

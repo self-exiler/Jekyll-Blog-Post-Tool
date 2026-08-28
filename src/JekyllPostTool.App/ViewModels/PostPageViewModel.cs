@@ -1,12 +1,13 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using JekyllPostTool.Application.Ai;
-using JekyllPostTool.Application.Authors;
 using JekyllPostTool.Application.Posts;
+using JekyllPostTool.Domain.Authors;
 using JekyllPostTool.Domain.Posts;
+using JekyllPostTool.Infrastructure.Ai;
 using JekyllPostTool.Infrastructure.FileSystem;
-using JekyllPostTool.Infrastructure.Import;
+using JekyllPostTool.Infrastructure.Posts;
 using JekyllPostTool_App.Services;
 using Microsoft.UI.Xaml;
 
@@ -17,14 +18,13 @@ namespace JekyllPostTool_App.ViewModels;
 /// </summary>
 public sealed partial class PostPageViewModel : ObservableObject
 {
-    private readonly IProjectContext _projectContext;
-    private readonly PostCreateUseCase _postCreateUseCase;
-    private readonly PostEditUseCase _postEditUseCase;
-    private readonly AuthorCrudUseCase _authorUseCase;
-    private readonly IFilePickerService _filePickerService;
-    private readonly IDialogService _dialogService;
-    private readonly MarkdownBodyImporter _bodyImporter;
-    private readonly IAiService _aiService;
+    private readonly ProjectContext _projectContext;
+    private readonly PostSaveUseCase _saveUseCase;
+    private readonly IPostRepository _postRepository;
+    private readonly IAuthorRepository _authorRepository;
+    private readonly WinUIFilePickerService _filePickerService;
+    private readonly WinUIDialogService _dialogService;
+    private readonly OpenAiService _aiService;
     private readonly ImageInserter _imageInserter;
 
     private readonly DispatcherTimer _previewTimer;
@@ -115,31 +115,32 @@ public sealed partial class PostPageViewModel : ObservableObject
     public bool CanInsertImages => _projectContext.CurrentProject is not null && !string.IsNullOrWhiteSpace(GetCurrentSlug());
 
     public PostPageViewModel(
-        IProjectContext projectContext,
-        PostCreateUseCase postCreateUseCase,
-        PostEditUseCase postEditUseCase,
-        AuthorCrudUseCase authorUseCase,
-        IFilePickerService filePickerService,
-        IDialogService dialogService,
-        MarkdownBodyImporter bodyImporter,
-        IAiService aiService,
+        ProjectContext projectContext,
+        PostSaveUseCase saveUseCase,
+        IPostRepository postRepository,
+        IAuthorRepository authorRepository,
+        WinUIFilePickerService filePickerService,
+        WinUIDialogService dialogService,
+        OpenAiService aiService,
         ImageInserter imageInserter)
     {
         _projectContext = projectContext;
-        _postCreateUseCase = postCreateUseCase;
-        _postEditUseCase = postEditUseCase;
-        _authorUseCase = authorUseCase;
+        _saveUseCase = saveUseCase;
+        _postRepository = postRepository;
+        _authorRepository = authorRepository;
         _filePickerService = filePickerService;
         _dialogService = dialogService;
-        _bodyImporter = bodyImporter;
         _aiService = aiService;
         _imageInserter = imageInserter;
 
         _previewTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
         _previewTimer.Tick += OnPreviewTimerTick;
 
-        _projectContext.CurrentProjectChanged += OnCurrentProjectChanged;
+        // 唯一通知机制：PropertyChanged(nameof(CurrentProject))（ProjectContext 合一后）
+        _projectContext.PropertyChanged += OnCurrentProjectChanged;
     }
+
+    partial void OnIsBusyChanged(bool value) => SavePostCommand.NotifyCanExecuteChanged();
 
     /// <summary>
     /// 获取当前博文 slug：优先从已保存文件名提取，否则用标题生成（遵循 ADR-006 中文保留）。
@@ -148,7 +149,7 @@ public sealed partial class PostPageViewModel : ObservableObject
     {
         if (!string.IsNullOrEmpty(_originalFilePath))
         {
-            return ImageInserter.ExtractSlugFromFileName(_originalFilePath);
+            return Post.TryExtractSlug(_originalFilePath);
         }
 
         // 未保存时用 SlugGenerator 生成，与文件名预览一致（ADR-006：中文原样保留）
@@ -206,10 +207,18 @@ public sealed partial class PostPageViewModel : ObservableObject
             return;
         }
 
-        var authors = await _authorUseCase.ListAsync();
-        foreach (var author in authors)
+        try
         {
-            AvailableAuthors.Add(new AuthorOption(author, OnAuthorSelectionChanged));
+            var authors = await _authorRepository.GetAllAsync();
+            foreach (var author in authors)
+            {
+                AvailableAuthors.Add(new AuthorOption(author, OnAuthorSelectionChanged));
+            }
+        }
+        catch (Exception ex)
+        {
+            // authors.yml 损坏或被占用时不让异常静默
+            await _dialogService.ShowInfoAsync("加载作者失败", ex.Message);
         }
 
         UpdateAuthorsDisplay();
@@ -228,36 +237,63 @@ public sealed partial class PostPageViewModel : ObservableObject
         SelectedAuthorsDisplay = selected.Count == 0 ? "无作者" : string.Join(", ", selected);
     }
 
-    /// <summary>
-    /// 由编辑状态构造 FrontMatter（委托 FrontMatterBuilder 纯函数）。
-    /// </summary>
-    private FrontMatter BuildFrontMatter() => FrontMatterBuilder.Build(BuildEditState());
+    /// <summary>由可观察属性收集表单编辑态快照；映射规则全部在 <see cref="PostFormState"/>。</summary>
+    private PostFormState BuildFormState() => new(
+        Title,
+        SelectedDate,
+        SelectedTime,
+        SelectedTimeZone,
+        Category1,
+        Category2,
+        Tags,
+        Description,
+        [.. AvailableAuthors.Where(a => a.IsSelected).Select(a => a.Id)]);
 
-    private PostEditState BuildEditState()
+    /// <summary>把表单编辑态快照写回可观察属性。</summary>
+    private void ApplyFormState(PostFormState state)
     {
-        var selectedAuthorIds = AvailableAuthors
-            .Where(a => a.IsSelected)
-            .Select(a => a.Id)
-            .ToList();
+        Title = state.Title;
+        SelectedDate = state.SelectedDate;
+        SelectedTime = state.SelectedTime;
+        SelectedTimeZone = state.SelectedTimeZone;
+        Category1 = state.Category1;
+        Category2 = state.Category2;
+        Tags = state.Tags;
+        Description = state.Description;
+    }
 
-        return new PostEditState(
-            Title,
-            Category1,
-            Category2,
-            Tags,
-            Description,
-            SelectedDate,
-            SelectedTime,
-            SelectedTimeZone,
-            selectedAuthorIds);
+    /// <summary>把表单编辑态写入当前表单并刷新作者选中态。</summary>
+    private async Task ApplyFormStateAndRefreshAuthorsAsync(PostFormState state, IReadOnlyList<string> selectedAuthorIds)
+    {
+        ApplyFormState(state);
+        await LoadAuthorsAsync();
+
+        var selectedIds = new HashSet<string>(selectedAuthorIds, StringComparer.Ordinal);
+        foreach (var option in AvailableAuthors)
+        {
+            option.IsSelected = selectedIds.Contains(option.Id);
+        }
     }
 
     private void UpdatePreview()
     {
-        var frontMatter = FrontMatterBuilder.Build(BuildEditState());
-        var (fileNamePreview, frontMatterPreview) = FrontMatterBuilder.BuildPreview(frontMatter);
-        FileNamePreview = fileNamePreview;
-        FrontMatterPreview = frontMatterPreview;
+        try
+        {
+            var frontMatter = BuildFormState().ToFrontMatter();
+
+            var slug = SlugGenerator.Generate(frontMatter.Title);
+            FileNamePreview = frontMatter.Date.HasValue
+                ? Post.BuildFileName(frontMatter.Date.Value, slug)
+                : $"{slug.Value}.md";
+
+            // 与落盘共用 PostFileFormat.Format：预览即最终字节（所见即所得由构造保证）
+            FrontMatterPreview = PostFileFormat.Format(frontMatter);
+        }
+        catch
+        {
+            FileNamePreview = "填写标题后生成文件名";
+            FrontMatterPreview = string.Empty;
+        }
     }
 
     private void NotifyPostFileChanged()
@@ -267,8 +303,13 @@ public sealed partial class PostPageViewModel : ObservableObject
         InsertImagesCommand.NotifyCanExecuteChanged();
     }
 
-    private void OnCurrentProjectChanged(object? sender, EventArgs e)
+    private void OnCurrentProjectChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName != nameof(ProjectContext.CurrentProject))
+        {
+            return;
+        }
+
         _ = LoadAuthorsAsync().ContinueWith(
             static t => System.Diagnostics.Debug.WriteLine($"[PostPageVM] 加载作者失败: {t.Exception}"),
             TaskContinuationOptions.OnlyOnFaulted);

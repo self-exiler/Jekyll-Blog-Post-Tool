@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -12,32 +13,36 @@ namespace JekyllPostTool_App.ViewModels;
 /// </summary>
 public sealed partial class ProjectPageViewModel : ObservableObject, IDisposable
 {
-    private readonly IProjectContext _projectContext;
+    private readonly ProjectContext _projectContext;
     private readonly DefaultProjectSettingService _settingService;
-    private readonly IFilePickerService _filePickerService;
-    private readonly IDialogService _dialogService;
+    private readonly WinUIFilePickerService _filePickerService;
+    private readonly WinUIDialogService _dialogService;
 
     [ObservableProperty]
     private string _projectPath = "未选择项目";
 
     public ProjectPageViewModel(
-        IProjectContext projectContext,
+        ProjectContext projectContext,
         DefaultProjectSettingService settingService,
-        IFilePickerService filePickerService,
-        IDialogService dialogService)
+        WinUIFilePickerService filePickerService,
+        WinUIDialogService dialogService)
     {
         _projectContext = projectContext;
         _settingService = settingService;
         _filePickerService = filePickerService;
         _dialogService = dialogService;
 
-        _projectContext.CurrentProjectChanged += OnCurrentProjectChanged;
+        // 唯一通知机制：PropertyChanged(nameof(CurrentProject))
+        _projectContext.PropertyChanged += OnCurrentProjectChanged;
         RefreshFromContext();
     }
 
-    private void OnCurrentProjectChanged(object? sender, EventArgs e)
+    private void OnCurrentProjectChanged(object? sender, PropertyChangedEventArgs e)
     {
-        RefreshFromContext();
+        if (e.PropertyName == nameof(ProjectContext.CurrentProject))
+        {
+            RefreshFromContext();
+        }
     }
 
     [RelayCommand]
@@ -112,6 +117,6 @@ public sealed partial class ProjectPageViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
-        _projectContext.CurrentProjectChanged -= OnCurrentProjectChanged;
+        _projectContext.PropertyChanged -= OnCurrentProjectChanged;
     }
 }

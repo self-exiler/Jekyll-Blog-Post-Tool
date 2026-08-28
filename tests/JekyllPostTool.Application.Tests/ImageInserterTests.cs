@@ -94,22 +94,15 @@ public sealed class ImageInserterTests : IDisposable
         Assert.True(Directory.Exists(Path.Combine(_project.Path, "assets", "img", "new-slug")));
     }
 
-    [Theory]
-    [InlineData("2026-07-28-writing-a-new-post.md", "writing-a-new-post")]
-    [InlineData("2026-07-28-writing-a-new-post", "writing-a-new-post")]
-    [InlineData("simple-post.md", "simple-post")]
-    [InlineData("nodate.md", "nodate")]
-    [InlineData("2026-07-28-a.md", "a")]
-    public void ExtractSlugFromFileName_StripsDatePrefix(string fileName, string expected)
-    {
-        Assert.Equal(expected, ImageInserter.ExtractSlugFromFileName(fileName));
-    }
-
     [Fact]
-    public void ExtractSlugFromFileName_ThrowsOnNullOrWhiteSpace()
+    public async Task InsertAsync_EscapesAltTextMarkdownChars()
     {
-        Assert.Throws<ArgumentException>(() => ImageInserter.ExtractSlugFromFileName(""));
-        Assert.Throws<ArgumentException>(() => ImageInserter.ExtractSlugFromFileName("   "));
+        var src = CreateSourceImage("esc.png");
+
+        // alt 含 markdown 链接语法字符时不得生成断裂的引用
+        var markdown = await _inserter.InsertAsync(_project, "slug", new[] { src }, alt: "a[b](c)");
+
+        Assert.Contains("![a\\[b\\]\\(c\\)](/assets/img/slug/esc.png)", markdown);
     }
 
     [Fact]

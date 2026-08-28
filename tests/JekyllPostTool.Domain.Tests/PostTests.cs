@@ -46,6 +46,49 @@ public class PostTests
         var post = new Post("/posts/2026-01-01-test.md", new FrontMatter(), "");
         Assert.Equal("2026-01-01-test.md", post.FileName);
     }
+
+    [Theory]
+    [InlineData("2026-07-28-writing-a-new-post.md", "writing-a-new-post")]
+    [InlineData("2026-07-28-writing-a-new-post", "writing-a-new-post")]
+    [InlineData("/posts/2026-01-01-a.md", "a")]
+    [InlineData("simple-post.md", "simple-post")]
+    [InlineData("nodate.md", "nodate")]
+    public void TryExtractSlug_StripsDatePrefix(string fileName, string expected)
+    {
+        Assert.Equal(expected, Post.TryExtractSlug(fileName));
+    }
+
+    [Fact]
+    public void TryExtractSlug_TitleResemblingDate_IsNotStripped()
+    {
+        // 非数字日期位：不得误剥（原实现仅检查连字符位置）
+        Assert.Equal("abcd-ef-gh-rest", Post.TryExtractSlug("abcd-ef-gh-rest.md"));
+    }
+
+    [Fact]
+    public void TryExtractSlug_DatePrefixWithoutSlug_IsNotStripped()
+    {
+        // 前缀后无 slug 时不剥，避免返回空串
+        Assert.Equal("2026-07-28", Post.TryExtractSlug("2026-07-28.md"));
+    }
+
+    [Fact]
+    public void TryExtractSlug_ThrowsOnNullOrWhiteSpace()
+    {
+        Assert.Throws<ArgumentException>(() => Post.TryExtractSlug(""));
+        Assert.Throws<ArgumentException>(() => Post.TryExtractSlug("   "));
+    }
+
+    [Fact]
+    public void TryExtractSlug_IsInverseOfBuildFileName()
+    {
+        var date = new DateTimeOffset(2026, 7, 28, 14, 10, 0, TimeSpan.FromHours(8));
+        var slug = new Slug("hello-world");
+
+        var fileName = Post.BuildFileName(date, slug);
+
+        Assert.Equal(slug.Value, Post.TryExtractSlug(fileName));
+    }
 }
 
 /// <summary>

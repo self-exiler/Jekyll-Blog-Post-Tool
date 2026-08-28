@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.Input;
 using JekyllPostTool.Domain.Posts;
-using JekyllPostTool_App.Services;
+using JekyllPostTool.Infrastructure.Posts;
 
 namespace JekyllPostTool_App.ViewModels;
 
@@ -20,7 +20,20 @@ public sealed partial class PostPageViewModel
             return;
         }
 
-        var imported = await _bodyImporter.ImportAsync(filePath);
+        string imported;
+        try
+        {
+            // 读全文并剥离 front matter（原 MarkdownBodyImporter 的两行内联）
+            var content = await File.ReadAllTextAsync(filePath);
+            imported = PostFileFormat.Parse(content).Body;
+        }
+        catch (Exception ex)
+        {
+            // 文件被占用 / 编码异常不再静默吞掉
+            await _dialogService.ShowInfoAsync("导入失败", ex.Message);
+            return;
+        }
+
         // FR-4.3：默认追加，勾选 ReplaceBodyOnImport 时替换
         Body = ReplaceBodyOnImport ? imported : BodyInsertion.InsertAtCursor(Body, imported, null);
     }

@@ -7,15 +7,8 @@ namespace JekyllPostTool_App.Services;
 /// <summary>
 /// 基于 WinUI 文件选择器的实现。
 /// </summary>
-public sealed class WinUIFilePickerService : IFilePickerService
+public sealed class WinUIFilePickerService(Window window)
 {
-    private readonly Window _window;
-
-    public WinUIFilePickerService(Window window)
-    {
-        _window = window;
-    }
-
     public async Task<string?> PickFolderAsync()
     {
         var picker = new FolderPicker
@@ -24,7 +17,7 @@ public sealed class WinUIFilePickerService : IFilePickerService
         };
         picker.FileTypeFilter.Add("*");
 
-        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(_window));
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(window));
 
         var folder = await picker.PickSingleFolderAsync();
         return folder?.Path;
@@ -38,7 +31,7 @@ public sealed class WinUIFilePickerService : IFilePickerService
         };
         picker.FileTypeFilter.Add(".md");
 
-        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(_window));
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(window));
 
         var file = await picker.PickSingleFileAsync();
         return file?.Path;
@@ -55,7 +48,7 @@ public sealed class WinUIFilePickerService : IFilePickerService
             picker.FileTypeFilter.Add(type);
         }
 
-        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(_window));
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(window));
 
         var files = await picker.PickMultipleFilesAsync();
         if (files is null || files.Count == 0)

@@ -1,12 +1,22 @@
 ## .NET
 bin/
 obj/
+artifacts/
+publish/
+AppPackages/
 *.user
 *.suo
 .vs/
 *.userprefs
 project.lock.json
 TestResultTemplate.html
+*.log
+*.binlog
+*.trx
+*.nupkg
+*_wpftmp.csproj
+[Tt]est[Rr]esult*/
+_ReSharper*/
 
 ## Windows App SDK
 *.appx
@@ -24,6 +34,5 @@ pkg/
 
 ## 工具与备份
 .workbuddy/
+.icon_backup_*/
 *.slnx.bak
-.log
-.binlog

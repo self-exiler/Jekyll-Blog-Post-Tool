@@ -1,5 +1,4 @@
 using JekyllPostTool_App.ViewModels;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -15,7 +14,7 @@ public sealed partial class AuthorsPage : Page
     public AuthorsPage()
     {
         InitializeComponent();
-        ViewModel = App.Current.Services.GetRequiredService<AuthorsPageViewModel>();
+        ViewModel = App.Current.CreateAuthorsPageViewModel();
         DataContext = ViewModel;
     }
 

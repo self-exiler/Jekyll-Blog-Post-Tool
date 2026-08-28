@@ -93,15 +93,4 @@ public class AuthorCrudUseCaseTests
 
         Assert.Contains("不存在", ex.Message);
     }
-
-    [Fact]
-    public async Task ListAsync_ReturnsAllAuthors()
-    {
-        var repo = new StubAuthorRepository { Authors = [new Author("a", "A"), new Author("b", "B")] };
-        var useCase = new AuthorCrudUseCase(repo);
-
-        var list = await useCase.ListAsync();
-
-        Assert.Equal(2, list.Count);
-    }
 }

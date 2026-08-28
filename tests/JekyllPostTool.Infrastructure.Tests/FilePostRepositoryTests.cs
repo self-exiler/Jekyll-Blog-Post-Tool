@@ -72,31 +72,33 @@ public class FilePostRepositoryTests : IDisposable
         var fm2 = new FrontMatter { Title = "New", Date = DateTimeOffset.Now };
         await repo.SaveAsync(new Post(path, fm2, "new body"));
 
-        var loaded = await repo.LoadAsync(path);
-        Assert.Equal("New", loaded!.FrontMatter.Title);
+        var loaded = (await repo.ReadAsync(path))!.ToPost();
+        Assert.Equal("New", loaded.FrontMatter.Title);
         Assert.Equal("new body", loaded.Body);
     }
 
     [Fact]
-    public async Task LoadAsync_NonExistentFile_ReturnsNull()
+    public async Task ReadAsync_NonExistentFile_ReturnsNull()
     {
         var repo = new FilePostRepository();
-        var result = await repo.LoadAsync(Path.Combine(_tempDir, "ghost.md"));
+        var result = await repo.ReadAsync(Path.Combine(_tempDir, "ghost.md"));
         Assert.Null(result);
     }
 
     [Fact]
-    public async Task LoadAsync_ValidFile_ReturnsPostWithFrontMatterAndBody()
+    public async Task ReadAsync_ValidFile_ReturnsContentAndParsedPost()
     {
         var path = Path.Combine(_tempDir, "load.md");
         var content = "---\ntitle: Loaded Post\ndate: 2026-07-28\nauthors:\n  - cotes\n---\nThis is the body text.";
         await File.WriteAllTextAsync(path, content);
 
         var repo = new FilePostRepository();
-        var post = await repo.LoadAsync(path);
+        var read = await repo.ReadAsync(path);
 
-        Assert.NotNull(post);
-        Assert.Equal("Loaded Post", post!.FrontMatter.Title);
+        Assert.NotNull(read);
+        Assert.Equal(content, read!.Content);
+        var post = read.ToPost();
+        Assert.Equal("Loaded Post", post.FrontMatter.Title);
         Assert.True(post.FrontMatter.Date.HasValue);
         Assert.Equal("This is the body text.", post.Body);
     }
@@ -152,10 +154,10 @@ public class FilePostRepositoryTests : IDisposable
         var post = new Post(path, fm, "正文内容");
         await repo.SaveAsync(post);
 
-        var loaded = await repo.LoadAsync(path);
+        var loaded = (await repo.ReadAsync(path))!.ToPost();
 
         Assert.NotNull(loaded);
-        Assert.Equal(fm.Title, loaded!.FrontMatter.Title);
+        Assert.Equal(fm.Title, loaded.FrontMatter.Title);
         Assert.Equal(fm.Date, loaded.FrontMatter.Date);
         Assert.Equal(fm.Categories.Count, loaded.FrontMatter.Categories.Count);
         Assert.Equal(fm.Tags.Count, loaded.FrontMatter.Tags.Count);

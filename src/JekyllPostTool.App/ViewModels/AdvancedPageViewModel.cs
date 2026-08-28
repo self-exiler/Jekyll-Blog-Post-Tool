@@ -11,7 +11,7 @@ namespace JekyllPostTool_App.ViewModels;
 public sealed partial class AdvancedPageViewModel : ObservableObject
 {
     private readonly AiSettingsService _aiSettingsService;
-    private readonly IDialogService _dialogService;
+    private readonly WinUIDialogService _dialogService;
 
     [ObservableProperty]
     private string _aiBaseUrl = string.Empty;
@@ -22,7 +22,7 @@ public sealed partial class AdvancedPageViewModel : ObservableObject
     [ObservableProperty]
     private string _aiModel = string.Empty;
 
-    public AdvancedPageViewModel(AiSettingsService aiSettingsService, IDialogService dialogService)
+    public AdvancedPageViewModel(AiSettingsService aiSettingsService, WinUIDialogService dialogService)
     {
         _aiSettingsService = aiSettingsService;
         _dialogService = dialogService;

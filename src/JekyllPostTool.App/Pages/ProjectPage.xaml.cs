@@ -1,5 +1,4 @@
 using JekyllPostTool_App.ViewModels;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -15,7 +14,7 @@ public sealed partial class ProjectPage : Page
     public ProjectPage()
     {
         InitializeComponent();
-        ViewModel = App.Current.Services.GetRequiredService<ProjectPageViewModel>();
+        ViewModel = App.Current.CreateProjectPageViewModel();
         DataContext = ViewModel;
     }
 

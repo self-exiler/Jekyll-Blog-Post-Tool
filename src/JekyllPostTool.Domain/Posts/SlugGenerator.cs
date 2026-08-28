@@ -53,9 +53,6 @@ public static partial class SlugGenerator
         // 连续 - 压缩为单个
         slug = MultipleHyphensRegex().Replace(slug, "-");
 
-        // 去除文件系统非法字符（防御性）
-        slug = IllegalCharsRegex().Replace(slug, string.Empty);
-
         // 去除首尾 -
         slug = slug.Trim('-');
 
@@ -76,7 +73,4 @@ public static partial class SlugGenerator
 
     [GeneratedRegex(@"-{2,}")]
     private static partial Regex MultipleHyphensRegex();
-
-    [GeneratedRegex(@"[\/:*?""<>|]")]
-    private static partial Regex IllegalCharsRegex();
 }

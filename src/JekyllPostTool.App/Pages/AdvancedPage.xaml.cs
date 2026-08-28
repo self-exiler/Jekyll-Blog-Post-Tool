@@ -1,5 +1,4 @@
 using JekyllPostTool_App.ViewModels;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml.Controls;
 
 namespace JekyllPostTool_App.Pages;
@@ -14,7 +13,7 @@ public sealed partial class AdvancedPage : Page
     public AdvancedPage()
     {
         InitializeComponent();
-        ViewModel = App.Current.Services.GetRequiredService<AdvancedPageViewModel>();
+        ViewModel = App.Current.CreateAdvancedPageViewModel();
         DataContext = ViewModel;
     }
 }

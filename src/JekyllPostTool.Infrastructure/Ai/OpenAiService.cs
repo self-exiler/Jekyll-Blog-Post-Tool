@@ -7,10 +7,10 @@ using JekyllPostTool.Application.Ai;
 namespace JekyllPostTool.Infrastructure.Ai;
 
 /// <summary>
-/// 基于 OpenAI 兼容 Chat Completions API 的 <see cref="IAiService"/> 实现（FR-7.2~7.3）。
+/// 基于 OpenAI 兼容 Chat Completions API 的 AI 关键字提取实现（FR-7.2~7.3）。
 /// 每次调用读取最新配置，以便用户在高级功能页修改后立即生效。
 /// </summary>
-public sealed class OpenAiService : IAiService
+public sealed class OpenAiService
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -80,13 +80,14 @@ public sealed class OpenAiService : IAiService
             return trimmed;
         }
 
-        // 若以 /v1 结尾或包含 /v1/，直接追加；否则追加 /v1
-        if (trimmed.Contains("/v1", StringComparison.OrdinalIgnoreCase))
-        {
-            return trimmed + "/chat/completions";
-        }
+        // 路径段级判断是否已含版本段，避免 "/v1-proxy" 之类子串误判；否则补 /v1
+        var hasVersionSegment = trimmed
+            .Split('/', StringSplitOptions.RemoveEmptyEntries)
+            .Contains("v1", StringComparer.OrdinalIgnoreCase);
 
-        return trimmed + "/v1/chat/completions";
+        return hasVersionSegment
+            ? trimmed + "/chat/completions"
+            : trimmed + "/v1/chat/completions";
     }
 
     private static string TrimError(string error)
