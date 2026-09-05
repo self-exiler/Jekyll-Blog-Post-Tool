@@ -1,0 +1,9 @@
+<Project>
+
+  <!-- Release 不产出 .pdb 文件：符号嵌入 dll（DebugType=embedded），
+       发布目录与安装包保持干净，同时保留 crash.log 的文件名/行号诊断信息 -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+</Project>

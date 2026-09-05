@@ -46,9 +46,9 @@ public sealed partial class AdvancedPageViewModel : ObservableObject
     {
         var settings = new AiSettings
         {
-            BaseUrl = AiBaseUrl?.Trim() ?? string.Empty,
-            ApiKey = AiApiKey?.Trim() ?? string.Empty,
-            Model = AiModel?.Trim() ?? string.Empty
+            BaseUrl = AiBaseUrl.Trim(),
+            ApiKey = AiApiKey.Trim(),
+            Model = AiModel.Trim()
         };
 
         await _aiSettingsService.SetAsync(settings);

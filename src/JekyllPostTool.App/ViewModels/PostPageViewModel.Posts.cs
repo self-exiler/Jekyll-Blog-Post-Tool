@@ -126,7 +126,7 @@ public sealed partial class PostPageViewModel
                 return;
             }
 
-            var message = string.Join(Environment.NewLine, result.Errors.Select(e => e.Message));
+            var message = string.Join(Environment.NewLine, result.Errors?.Select(e => e.Message) ?? []);
             await _dialogService.ShowInfoAsync("保存失败", message);
             return;
         }

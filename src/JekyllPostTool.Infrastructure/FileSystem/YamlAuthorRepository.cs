@@ -42,6 +42,12 @@ public sealed class YamlAuthorRepository : IAuthorRepository
         }
 
         var dtos = Deserializer.Deserialize<Dictionary<string, AuthorDto>>(yaml);
+        if (dtos is null)
+        {
+            // 仅含注释等无根节点的 YAML 会反序列化为 null，视为空列表
+            return Array.Empty<Author>();
+        }
+
         var authors = dtos
             .Where(kvp => kvp.Value is { Name: not null })
             .Select(kvp => new Author(kvp.Key, kvp.Value.Name!, kvp.Value.Twitter, kvp.Value.Url))

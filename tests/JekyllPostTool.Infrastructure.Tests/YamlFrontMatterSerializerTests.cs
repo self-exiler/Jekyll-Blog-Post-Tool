@@ -83,6 +83,7 @@ public class YamlFrontMatterSerializerTests
     [Fact]
     public void Serialize_UnknownFields_AppendedAfterKnownFields()
     {
+        // 未知字段取解析器产出的形态（标量字符串 / 列表），按插入顺序追加在已知字段之后
         var fm = new FrontMatter
         {
             Title = "Test",
@@ -90,14 +91,19 @@ public class YamlFrontMatterSerializerTests
             UnknownFields = new OrderedDictionary<string, object?>
             {
                 ["custom"] = "value",
-                ["enabled"] = true
+                ["legacy"] = new List<object?> { "a", "b" }
             }
         };
 
         var yaml = YamlFrontMatterSerializer.Serialize(fm);
 
-        Assert.Contains("custom: value", yaml);
-        Assert.Contains("enabled: true", yaml);
+        var customIndex = yaml.IndexOf("custom: value", StringComparison.Ordinal);
+        var legacyIndex = yaml.IndexOf("legacy:", StringComparison.Ordinal);
+        var dateIndex = yaml.IndexOf("date:", StringComparison.Ordinal);
+        Assert.True(customIndex >= 0 && legacyIndex > customIndex && customIndex > dateIndex,
+            $"unexpected field order:\n{yaml}");
+        Assert.Contains("- a", yaml);
+        Assert.Contains("- b", yaml);
     }
 
     [Fact]

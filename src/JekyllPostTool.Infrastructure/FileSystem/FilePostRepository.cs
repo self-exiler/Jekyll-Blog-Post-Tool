@@ -48,15 +48,7 @@ public sealed class FilePostRepository : IPostRepository
         try
         {
             await File.WriteAllTextAsync(tempPath, content, OutputEncoding, cancellationToken);
-
-            if (File.Exists(post.FilePath))
-            {
-                File.Replace(tempPath, post.FilePath, destinationBackupFileName: null);
-            }
-            else
-            {
-                File.Move(tempPath, post.FilePath);
-            }
+            File.Move(tempPath, post.FilePath, overwrite: true);
         }
         catch
         {

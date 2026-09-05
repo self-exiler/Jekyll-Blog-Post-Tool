@@ -74,7 +74,6 @@ public partial class App : Application
         PostPageViewModel = new PostPageViewModel(
             ProjectContext,
             new PostSaveUseCase(PostRepository, AuthorRepository, conflictResolver),
-            PostRepository,
             AuthorRepository,
             FilePickerService,
             DialogService,

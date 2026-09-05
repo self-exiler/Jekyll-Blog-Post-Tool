@@ -22,9 +22,4 @@ public sealed partial class AuthorsPage : Page
     {
         ViewModel.LoadAuthorsCommand.Execute(null);
     }
-
-    private void OnUnloaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
-    {
-        ViewModel.Dispose();
-    }
 }

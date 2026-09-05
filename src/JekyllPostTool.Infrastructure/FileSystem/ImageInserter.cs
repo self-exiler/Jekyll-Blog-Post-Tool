@@ -1,4 +1,3 @@
-using System.IO;
 using System.Text;
 using JekyllPostTool.Domain.Posts;
 using JekyllPostTool.Domain.Projects;
@@ -72,16 +71,13 @@ public sealed class ImageInserter
         var fileNameWithoutExt = Path.GetFileNameWithoutExtension(destPath);
         var ext = Path.GetExtension(destPath);
 
-        for (var i = 1; i < int.MaxValue; i++)
+        var i = 1;
+        while (File.Exists(Path.Combine(dir, $"{fileNameWithoutExt}-{i}{ext}")))
         {
-            var candidate = Path.Combine(dir, $"{fileNameWithoutExt}-{i}{ext}");
-            if (!File.Exists(candidate))
-            {
-                return candidate;
-            }
+            i++;
         }
 
-        throw new IOException($"无法为 {destPath} 找到可用的文件名");
+        return Path.Combine(dir, $"{fileNameWithoutExt}-{i}{ext}");
     }
 
     /// <summary>转义 alt 文本中的 markdown 链接语法字符，避免生成断裂的引用。</summary>

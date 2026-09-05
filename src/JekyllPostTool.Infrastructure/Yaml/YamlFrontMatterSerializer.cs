@@ -74,16 +74,14 @@ public static class YamlFrontMatterSerializer
         mapping.Add(key, sequence);
     }
 
+    // 解析器产出的未知字段只会是 string / List<object?> / OrderedDictionary 三种，
+    // 其余类型经 ToString 兜底为标量
     private static YamlNode ConvertValue(object? value)
     {
         return value switch
         {
             null => new YamlScalarNode(""),
             string s => new YamlScalarNode(s),
-            bool b => new YamlScalarNode(b ? "true" : "false"),
-            int i => new YamlScalarNode(i.ToString()),
-            long l => new YamlScalarNode(l.ToString()),
-            double d => new YamlScalarNode(d.ToString(CultureInfo.InvariantCulture)),
             IDictionary dictionary => ConvertMapping(dictionary),
             IEnumerable enumerable and not string => ConvertSequence(enumerable),
             _ => new YamlScalarNode(value.ToString())

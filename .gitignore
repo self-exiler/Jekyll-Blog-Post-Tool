@@ -36,3 +36,7 @@ pkg/
 .workbuddy/
 .icon_backup_*/
 *.slnx.bak
+# Inno Setup 编译产物
+installer/output/
+
+*.pyc

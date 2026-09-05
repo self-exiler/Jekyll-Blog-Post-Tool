@@ -18,8 +18,9 @@ public sealed partial class ProjectPage : Page
         DataContext = ViewModel;
     }
 
-    private void OnUnloaded(object sender, RoutedEventArgs e)
+    private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        ViewModel.Dispose();
+        // 页面有 NavigationCacheMode，每次进入都重新同步显示状态
+        ViewModel.RefreshFromContext();
     }
 }

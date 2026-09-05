@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -11,7 +10,7 @@ namespace JekyllPostTool_App.ViewModels;
 /// <summary>
 /// 项目页视图模型。
 /// </summary>
-public sealed partial class ProjectPageViewModel : ObservableObject, IDisposable
+public sealed partial class ProjectPageViewModel : ObservableObject
 {
     private readonly ProjectContext _projectContext;
     private readonly DefaultProjectSettingService _settingService;
@@ -31,18 +30,6 @@ public sealed partial class ProjectPageViewModel : ObservableObject, IDisposable
         _settingService = settingService;
         _filePickerService = filePickerService;
         _dialogService = dialogService;
-
-        // 唯一通知机制：PropertyChanged(nameof(CurrentProject))
-        _projectContext.PropertyChanged += OnCurrentProjectChanged;
-        RefreshFromContext();
-    }
-
-    private void OnCurrentProjectChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(ProjectContext.CurrentProject))
-        {
-            RefreshFromContext();
-        }
     }
 
     [RelayCommand]
@@ -109,14 +96,10 @@ public sealed partial class ProjectPageViewModel : ObservableObject, IDisposable
         }
     }
 
-    private void RefreshFromContext()
+    /// <summary>页面 Loaded 时调用：从上下文同步当前显示（页面被缓存复用，不订阅事件）。</summary>
+    public void RefreshFromContext()
     {
         var project = _projectContext.CurrentProject;
         ProjectPath = project is null ? "未选择项目" : project.Path;
-    }
-
-    public void Dispose()
-    {
-        _projectContext.PropertyChanged -= OnCurrentProjectChanged;
     }
 }

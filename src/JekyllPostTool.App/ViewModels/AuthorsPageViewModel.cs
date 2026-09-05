@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using JekyllPostTool.Application.Authors;
@@ -11,15 +10,14 @@ namespace JekyllPostTool_App.ViewModels;
 /// <summary>
 /// 作者管理页视图模型。
 /// </summary>
-public sealed partial class AuthorsPageViewModel : ObservableObject, IDisposable
+public sealed partial class AuthorsPageViewModel : ObservableObject
 {
     private readonly AuthorCrudUseCase _authorUseCase;
     private readonly IAuthorRepository _authorRepository;
     private readonly ProjectContext _projectContext;
     private readonly WinUIDialogService _dialogService;
 
-    [ObservableProperty]
-    private ObservableCollection<Author> _authors = new();
+    public ObservableCollection<Author> Authors { get; } = new();
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelection))]
@@ -55,9 +53,6 @@ public sealed partial class AuthorsPageViewModel : ObservableObject, IDisposable
         _authorRepository = authorRepository;
         _projectContext = projectContext;
         _dialogService = dialogService;
-
-        // 唯一通知机制：PropertyChanged(nameof(CurrentProject))
-        _projectContext.PropertyChanged += OnCurrentProjectChanged;
     }
 
     partial void OnSelectedAuthorChanged(Author? value)
@@ -199,22 +194,5 @@ public sealed partial class AuthorsPageViewModel : ObservableObject, IDisposable
         Twitter = string.Empty;
         Url = string.Empty;
         IsNewAuthor = false;
-    }
-
-    private void OnCurrentProjectChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName != nameof(ProjectContext.CurrentProject))
-        {
-            return;
-        }
-
-        _ = LoadAuthorsAsync().ContinueWith(
-            static t => System.Diagnostics.Debug.WriteLine($"[AuthorsPageVM] 加载作者失败: {t.Exception}"),
-            TaskContinuationOptions.OnlyOnFaulted);
-    }
-
-    public void Dispose()
-    {
-        _projectContext.PropertyChanged -= OnCurrentProjectChanged;
     }
 }

@@ -20,7 +20,6 @@ public sealed partial class PostPageViewModel : ObservableObject
 {
     private readonly ProjectContext _projectContext;
     private readonly PostSaveUseCase _saveUseCase;
-    private readonly IPostRepository _postRepository;
     private readonly IAuthorRepository _authorRepository;
     private readonly WinUIFilePickerService _filePickerService;
     private readonly WinUIDialogService _dialogService;
@@ -117,7 +116,6 @@ public sealed partial class PostPageViewModel : ObservableObject
     public PostPageViewModel(
         ProjectContext projectContext,
         PostSaveUseCase saveUseCase,
-        IPostRepository postRepository,
         IAuthorRepository authorRepository,
         WinUIFilePickerService filePickerService,
         WinUIDialogService dialogService,
@@ -126,7 +124,6 @@ public sealed partial class PostPageViewModel : ObservableObject
     {
         _projectContext = projectContext;
         _saveUseCase = saveUseCase;
-        _postRepository = postRepository;
         _authorRepository = authorRepository;
         _filePickerService = filePickerService;
         _dialogService = dialogService;
@@ -135,9 +132,6 @@ public sealed partial class PostPageViewModel : ObservableObject
 
         _previewTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
         _previewTimer.Tick += OnPreviewTimerTick;
-
-        // 唯一通知机制：PropertyChanged(nameof(CurrentProject))（ProjectContext 合一后）
-        _projectContext.PropertyChanged += OnCurrentProjectChanged;
     }
 
     partial void OnIsBusyChanged(bool value) => SavePostCommand.NotifyCanExecuteChanged();
@@ -168,7 +162,7 @@ public sealed partial class PostPageViewModel : ObservableObject
         UpdatePreview();
     }
 
-    protected override void OnPropertyChanged(global::System.ComponentModel.PropertyChangedEventArgs e)
+    protected override void OnPropertyChanged(PropertyChangedEventArgs e)
     {
         base.OnPropertyChanged(e);
         if (e.PropertyName is nameof(Title)
@@ -199,30 +193,39 @@ public sealed partial class PostPageViewModel : ObservableObject
     [RelayCommand]
     public async Task LoadAuthorsAsync()
     {
+        // 重载后回填选中态：页面每次 Loaded 都会触发本方法，不能丢失用户已勾选的作者
+        var selectedIds = AvailableAuthors
+            .Where(a => a.IsSelected)
+            .Select(a => a.Id)
+            .ToHashSet(StringComparer.Ordinal);
+
         AvailableAuthors.Clear();
 
-        if (_projectContext.CurrentProject is null)
+        if (_projectContext.CurrentProject is not null)
         {
-            UpdateAuthorsDisplay();
-            return;
-        }
-
-        try
-        {
-            var authors = await _authorRepository.GetAllAsync();
-            foreach (var author in authors)
+            try
             {
-                AvailableAuthors.Add(new AuthorOption(author, OnAuthorSelectionChanged));
+                var authors = await _authorRepository.GetAllAsync();
+                foreach (var author in authors)
+                {
+                    AvailableAuthors.Add(new AuthorOption(author, OnAuthorSelectionChanged));
+                }
+            }
+            catch (Exception ex)
+            {
+                // authors.yml 损坏或被占用时不让异常静默
+                await _dialogService.ShowInfoAsync("加载作者失败", ex.Message);
             }
         }
-        catch (Exception ex)
+
+        foreach (var option in AvailableAuthors)
         {
-            // authors.yml 损坏或被占用时不让异常静默
-            await _dialogService.ShowInfoAsync("加载作者失败", ex.Message);
+            option.IsSelected = selectedIds.Contains(option.Id);
         }
 
         UpdateAuthorsDisplay();
         UpdatePreview();
+        NotifyPostFileChanged();
     }
 
     private void OnAuthorSelectionChanged()
@@ -301,18 +304,5 @@ public sealed partial class PostPageViewModel : ObservableObject
         OnPropertyChanged(nameof(TargetDirectory));
         OnPropertyChanged(nameof(CanInsertImages));
         InsertImagesCommand.NotifyCanExecuteChanged();
-    }
-
-    private void OnCurrentProjectChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName != nameof(ProjectContext.CurrentProject))
-        {
-            return;
-        }
-
-        _ = LoadAuthorsAsync().ContinueWith(
-            static t => System.Diagnostics.Debug.WriteLine($"[PostPageVM] 加载作者失败: {t.Exception}"),
-            TaskContinuationOptions.OnlyOnFaulted);
-        NotifyPostFileChanged();
     }
 }

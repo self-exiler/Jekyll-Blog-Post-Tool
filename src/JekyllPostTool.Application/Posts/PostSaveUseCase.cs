@@ -60,12 +60,12 @@ public sealed class PostSaveUseCase(
                 ? await CreateCoreAsync(project, frontMatter, body, resolution, cancellationToken)
                 : await UpdateCoreAsync(project, originalFilePath, frontMatter, originalContentHash, resolution, cancellationToken);
 
-            if (!result.IsConflict || result.Conflict is null)
+            if (result is not { IsConflict: true, Conflict: { } conflict })
             {
                 return result;
             }
 
-            var kind = await prompts.ResolveConflict(result.Conflict);
+            var kind = await prompts.ResolveConflict(conflict);
             if (kind is null)
             {
                 // 用户取消冲突处理
@@ -73,7 +73,7 @@ public sealed class PostSaveUseCase(
             }
 
             if (kind == ConflictResolutionKind.Overwrite
-                && !await prompts.ConfirmOverwrite(Path.GetFileName(result.Conflict.FilePath)))
+                && !await prompts.ConfirmOverwrite(Path.GetFileName(conflict.FilePath)))
             {
                 return result;
             }

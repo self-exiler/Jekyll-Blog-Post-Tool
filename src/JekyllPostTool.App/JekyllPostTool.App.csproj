@@ -13,9 +13,12 @@
     <WinUISDKReferences>false</WinUISDKReferences>
     <EnableMsixTooling>true</EnableMsixTooling>
     <WindowsPackageType>None</WindowsPackageType>
-    <!-- Debug 下使用系统安装的 Windows App Runtime，避免把整个 WinAppSDK 运行时复制进输出目录 -->
+    <!-- Release 自包含：.NET 与 WinAppSDK 运行时随应用分发，安装程序无需检测/安装任何依赖；
+         Debug 使用系统安装的运行时，避免复制运行时到输出目录拖慢增量构建 -->
     <WindowsAppSDKSelfContained Condition="'$(Configuration)' == 'Debug'">false</WindowsAppSDKSelfContained>
     <WindowsAppSDKSelfContained Condition="'$(Configuration)' != 'Debug'">true</WindowsAppSDKSelfContained>
+    <SelfContained Condition="'$(Configuration)' == 'Debug'">false</SelfContained>
+    <SelfContained Condition="'$(Configuration)' != 'Debug'">true</SelfContained>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
@@ -77,7 +80,7 @@
   <PropertyGroup>
     <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
     <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
-    <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
-    <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
+    <!-- 裁剪关闭：System.Text.Json 反射序列化与 IL 裁剪不兼容，框架依赖发布下裁剪收益微小 -->
+    <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
 </Project>

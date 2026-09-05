@@ -20,29 +20,23 @@ public static class YamlFrontMatterParser
     public static FrontMatter Parse(string yaml)
     {
         var frontMatter = new FrontMatter();
-        var unknownFields = new OrderedDictionary<string, object?>();
 
         if (string.IsNullOrWhiteSpace(yaml))
         {
-            frontMatter.UnknownFields = unknownFields;
             return frontMatter;
         }
 
         var yamlStream = new YamlStream();
         yamlStream.Load(new StringReader(yaml));
 
-        if (yamlStream.Documents.Count == 0)
+        // 无文档或根节点非映射（含注释-only 等空形态）时按空 front matter 处理
+        if (yamlStream.Documents.Count == 0
+            || yamlStream.Documents[0].RootNode is not YamlMappingNode mapping)
         {
-            frontMatter.UnknownFields = unknownFields;
             return frontMatter;
         }
 
-        var mapping = yamlStream.Documents[0].RootNode as YamlMappingNode;
-        if (mapping is null)
-        {
-            frontMatter.UnknownFields = unknownFields;
-            return frontMatter;
-        }
+        var unknownFields = new OrderedDictionary<string, object?>();
 
         foreach (var entry in mapping.Children)
         {
