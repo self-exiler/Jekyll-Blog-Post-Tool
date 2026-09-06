@@ -1,0 +1,63 @@
+name: Release
+
+# 触发方式：
+#  1. 推送 v 开头的 tag（如 v1.2.0）→ 云端编译并自动创建 GitHub Release，附上安装包
+#  2. Actions 页面手动 Run workflow（填版本号）→ 仅编译并上传构建产物，不发 Release
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '安装包版本号（如 1.1.0，不带 v 前缀）'
+        required: true
+        default: '1.1.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: 编译安装包
+    runs-on: windows-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: 安装 Inno Setup
+        run: choco install innosetup -y --no-progress
+        shell: pwsh
+
+      - name: 确定版本号（tag 优先去 v 前缀，手动触发用输入值）
+        id: ver
+        shell: pwsh
+        run: |
+          $v = '${{ inputs.version }}'
+          if (-not $v) { $v = ($env:GITHUB_REF_NAME -replace '^v', '') }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          Write-Output "版本号：$v"
+
+      - name: 发布应用并编译安装包
+        shell: pwsh
+        run: ./installer/build.ps1 -Version '${{ steps.ver.outputs.version }}'
+
+      - name: 上传构建产物（Actions 页面可下载）
+        uses: actions/upload-artifact@v4
+        with:
+          name: JekyllPostToolSetup-${{ steps.ver.outputs.version }}
+          path: installer/output/JekyllPostToolSetup-*.exe
+          if-no-files-found: error
+
+      - name: 创建 GitHub Release 并附安装包
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: installer/output/JekyllPostToolSetup-*.exe
+          generate_release_notes: true
+          fail_on_unmatched_files: true
