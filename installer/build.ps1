@@ -34,4 +34,4 @@ if (-not $iscc) {
 & $iscc "/DAppVersion=$Version" "$PSScriptRoot\setup.iss"
 if ($LASTEXITCODE -ne 0) { throw "ISCC 编译失败" }
 
-Write-Host "安装包已生成：$PSScriptRoot\output\JekyllPostToolSetup-$Version.exe" -ForegroundColor Green
+Write-Host "安装包已生成：$PSScriptRoot\output\JekyllPostTool-windows-x64-$Version.exe" -ForegroundColor Green

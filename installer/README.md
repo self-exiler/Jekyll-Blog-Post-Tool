@@ -18,7 +18,7 @@ powershell -File installer\build.ps1 -Version 1.2.0  # 指定版本号
 powershell -File installer\build.ps1 -SkipPublish    # 复用已有发布产物
 ```
 
-产物：`installer/output/JekyllPostToolSetup-<版本>.exe`（静默安装：追加 `/VERYSILENT /NORESTART`）。
+产物：`installer/output/JekyllPostTool-windows-x64-<版本>.exe`，命名规则为 **程序名-操作系统-cpu架构-版本号**（静默安装：追加 `/VERYSILENT /NORESTART`）。
 
 ## 维护注意
 
