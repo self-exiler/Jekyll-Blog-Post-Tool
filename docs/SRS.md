@@ -1,8 +1,8 @@
 # 软件需求说明书 (SRS)
 
 - 项目: Jekyll 博文 markdown 自动生成工具
-- 版本: v1.5
-- 日期: 2026-08-01
+- 版本: v1.6
+- 日期: 2026-09-06
 - 状态: Draft
 
 ## 1. 引言
@@ -11,7 +11,7 @@
 本文档定义 Jekyll 博文 markdown 自动生成工具的功能与非功能需求，作为设计、实现与验收的基线。配套的 [设计方案.md](./设计方案.md) 描述"如何实现"，[docs/adr/](./adr/) 记录关键决策的上下文，[docs/glossary.md](./glossary.md) 统一术语。
 
 ### 1.2 范围
-工具面向 Chirpy (Jekyll) 博客作者，通过 GUI 填表快速初始化与格式化博文文件名和 front matter，提供正文编辑与图片插入，并管理作者信息。**不**包含：站点构建/部署、Hugo 兼容（见 [ADR-001](./adr/ADR-001-ssg-jekyll-chirpy.md)、[ADR-002](./adr/ADR-002-tool-scope-frontmatter-only.md)）。
+工具面向 Chirpy (Jekyll) 博客作者，通过 GUI 填表快速初始化与格式化博文文件名和 front matter，提供 markdown 正文编辑（格式化工具栏与实时预览）与图片插入，并管理作者信息。**不**包含：站点构建/部署、Hugo 兼容（见 [ADR-001](./adr/ADR-001-ssg-jekyll-chirpy.md)、[ADR-002](./adr/ADR-002-tool-scope-frontmatter-only.md)）。
 
 ### 1.3 术语与缩略语
 见 [docs/glossary.md](./glossary.md)。关键术语：BlogProject、Author、Post、Front Matter、Category、Tag、Slug、Round-trip、SSG。
@@ -40,7 +40,7 @@
 
 ### 2.4 约束
 - 仅支持 Jekyll (Chirpy) 格式，不兼容 Hugo。
-- 正文编辑为纯文本 markdown（无富文本/所见即所得），复杂排版仍可用外部编辑器。
+- 正文编辑以 markdown 源文本为准（非所见即所得富文本编辑；v1.6 起提供格式化工具栏与实时预览，见 FR-4.12~4.13），复杂排版仍可用外部编辑器。
 - 作者信息按项目隔离，存于 `_data/authors.yml`。
 - 保留 front matter 未知字段（round-trip）。
 - 遵守 Chirpy 约定：文件名 `YYYY-MM-DD-TITLE.md`、categories ≤ 2。
@@ -99,7 +99,7 @@
 
 ### 3.4 博文正文
 
-"博文正文"为左侧导航独立页面（v1.5），提供正文 markdown 编辑、正文导入与光标处图片插入。
+"博文正文"为左侧导航独立页面（v1.5），提供正文 markdown 编辑、正文导入与光标处图片插入；v1.6 起编辑区升级为 Markdown 编辑器：格式化工具栏 + 可开关的实时预览分栏（FR-4.12~4.13）。
 
 | 编号 | 需求 | 优先级 |
 |------|------|--------|
@@ -114,6 +114,8 @@
 | FR-4.9 | 每张图片生成标准 markdown 引用 `![alt](/assets/img/{slug}/{filename})`；光标无效（无焦点/超出范围）时追加到正文末尾 | P0 |
 | FR-4.10 | alt 文本默认为空；用户可在插入前在输入框填写统一 alt（应用于本次所有图片） | P1 |
 | FR-4.11 | 未保存的博文也可插入图片：slug 由 title 生成（与文件名预览一致），标题为空时禁用插入按钮 | P0 |
+| FR-4.12 | Markdown 格式化工具栏（v1.6 新增）：粗体 `**`、斜体 `*`、删除线 `~~`、行内代码 `` ` ``、代码块 ``` 围栏、二级/三级标题 `##`/`###`、引用 `>`、无序/有序列表 `-`/`1.`、链接 `[文本](url)`、表格模板。包裹类命令作用于选区（两侧已有相同标记时解除包裹；无选区时插入成对标记并居中光标）；行前缀类命令作用于光标/选区覆盖的每一行（首行已有前缀时改为移除）；操作后焦点回到正文编辑框 | P1 |
+| FR-4.13 | Markdown 实时预览（v1.6 新增）：正文编辑框旁提供预览分栏，随正文输入防抖刷新渲染；可用开关隐藏/显示（默认开启，隐藏时编辑框占满全宽）。渲染基于 Markdig（支持表格、任务列表、删除线、自动链接），跟随应用深浅色主题；预览为只读展示，不参与保存内容（保存的仍是 markdown 源文本） | P1 |
 
 依据: [ADR-007](./adr/ADR-007-unknown-field-roundtrip-import-body-only.md)、[ADR-006](./adr/ADR-006-filename-slugify-chinese-preserved.md)、[Chirpy 媒体约定](./2019-08-08-write-a-new-post.md#media)
 
@@ -210,7 +212,7 @@ ai.json 结构（v1.4）：
 1. 用户启动工具，自动进入默认项目（或先选择项目文件夹）。
 2. 点击"新建博文"，在"博文头信息"页填写 title、date、categories、tags、authors、description。
 3. 工具实时预览生成的文件名与 front matter。
-4. 在"博文正文"页编辑正文 markdown、导入外部 markdown 追加正文，或从正文工具栏多选图片插入到光标处（未保存时也可用，slug 由 title 生成）。
+4. 在"博文正文"页用 Markdown 编辑器编辑正文（格式化工具栏、实时预览），导入外部 markdown 追加正文，或多选图片插入到光标处（未保存时也可用，slug 由 title 生成）。
 5. 点击保存：工具校验 → 检查重名 → 写入 `_posts/YYYY-MM-DD-TITLE.md`（front matter 与正文一次写入）。
 6. 可配置 AI 后用"AI 提取关键字"按钮将正文提炼为 tags。
 
@@ -235,6 +237,7 @@ ai.json 结构（v1.4）：
 - 重名冲突提供三选项处理。
 - 多作者以 `authors: [...]` 数组形式输出，**作者为空时省略 `authors` 字段**（与 categories/tags 一致）；单数字段 `author` 自动迁移。
 - 导入正文时正确剥离外部文件的 front matter，默认追加；"博文正文"页可直接编辑 markdown 正文（FR-4.4）。
+- "博文正文"页提供 Markdown 格式化工具栏（作用于选区/行，可解除包裹与移除前缀）与可开关的实时预览分栏；保存内容仍为 markdown 源文本（FR-4.12~4.13）。
 - 输出文件编码为 UTF-8 无 BOM，换行符 LF。
 - "博文正文"页提供插入图片：多选本地图片复制到 `/assets/img/{slug}/`，markdown 引用插入到正文光标处（无光标时追加末尾），文件名冲突自动加序号（FR-4.5~4.11）。
 - 高级功能页提供"AI 设置"卡片，可配置 OpenAI 兼容 API 并用"AI 提取关键字"生成 tags（FR-7.x）。
