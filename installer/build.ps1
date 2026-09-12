@@ -1,6 +1,6 @@
 # 构建 Jekyll Post Tool 安装程序
 # 用法：powershell -File installer\build.ps1 [-Version 1.0.0]
-# 产物：installer\output\JekyllPostToolSetup-<Version>.exe
+# 产物：installer\output\JekyllPostTool-windows-x64-<Version>.exe
 # 依赖：Inno Setup 6.7+（winget install JRSoftware.InnoSetup）；ISCC 不在默认路径时会提示。
 param(
     [string]$Version = "1.0.0",

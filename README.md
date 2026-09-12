@@ -151,7 +151,7 @@ dotnet test JekyllPostTool.slnx
 
 - 安装位置：`%LOCALAPPDATA%\Programs\JekyllPostTool`
 - **无需管理员权限、全程无 UAC、无需联网**，不安装任何系统级依赖
-- 产物：单文件 `JekyllPostToolSetup-<版本>.exe`（约 68MB），面向 Windows 10 1809+ x64
+- 产物：单文件 `JekyllPostTool-windows-x64-<版本>.exe`（约 68MB），面向 Windows 10 1809+ x64
 
 ```powershell
 # 前置：winget install JRSoftware.InnoSetup
