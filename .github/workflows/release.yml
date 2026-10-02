@@ -10,16 +10,19 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: '安装包版本号（如 1.1.0，不带 v 前缀）'
+        description: '安装包版本号（如 1.2.0，不带 v 前缀）'
         required: true
-        default: '1.1.0'
+        default: '1.2.0'
 
 permissions:
   contents: write
 
+env:
+  WIX_VERSION: '5.0.2'
+
 jobs:
   build:
-    name: 编译安装包
+    name: 编译安装包（.NET + Rust）
     runs-on: windows-latest
     steps:
       - name: 检出代码
@@ -30,9 +33,13 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: 安装 Inno Setup
-        run: choco install innosetup -y --no-progress
+      # windows-latest 自带 rustup（stable-x86_64-pc-windows-msvc）与 Windows SDK，
+      # jp-app 的 build.rs（winresource 编 exe 图标）直接可用
+      - name: 安装 WiX Toolset
         shell: pwsh
+        run: |
+          dotnet tool install -g wix --version $env:WIX_VERSION
+          wix extension add -g "WixToolset.UI.wixext/$env:WIX_VERSION"
 
       - name: 确定版本号（tag 优先去 v 前缀，手动触发用输入值）
         id: ver
@@ -43,21 +50,21 @@ jobs:
           "version=$v" >> $env:GITHUB_OUTPUT
           Write-Output "版本号：$v"
 
-      - name: 发布应用并编译安装包
+      - name: 编译两个版本并打包 MSI
         shell: pwsh
-        run: ./installer/build.ps1 -Version '${{ steps.ver.outputs.version }}'
+        run: ./installer/build.ps1 -Version '${{ steps.ver.outputs.version }}' -Target all
 
       - name: 上传构建产物（Actions 页面可下载）
         uses: actions/upload-artifact@v4
         with:
-          name: JekyllPostTool-windows-x64-${{ steps.ver.outputs.version }}
-          path: installer/output/*.exe
+          name: JekyllPostTool-windows-x64-${{ steps.ver.outputs.version }}-msi
+          path: installer/output/*.msi
           if-no-files-found: error
 
       - name: 创建 GitHub Release 并附安装包
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: installer/output/*.exe
+          files: installer/output/*.msi
           generate_release_notes: true
           fail_on_unmatched_files: true

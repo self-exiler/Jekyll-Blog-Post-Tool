@@ -1,0 +1,18 @@
+[package]
+name = "jp-infrastructure"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "jp_infrastructure"
+path = "src/lib.rs"
+
+[dependencies]
+jp-domain.workspace = true
+jp-application.workspace = true
+chrono.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+ureq.workspace = true

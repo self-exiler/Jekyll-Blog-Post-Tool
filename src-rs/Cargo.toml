@@ -1,0 +1,39 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/jp-domain",
+    "crates/jp-application",
+    "crates/jp-infrastructure",
+    "crates/jp-app",
+]
+
+[workspace.package]
+version = "1.1.0"
+edition = "2021"
+rust-version = "1.85"
+
+[workspace.dependencies]
+jp-domain = { path = "crates/jp-domain" }
+jp-application = { path = "crates/jp-application" }
+jp-infrastructure = { path = "crates/jp-infrastructure" }
+
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+sha2 = "0.10"
+unicode-normalization = "0.1"
+ureq = { version = "2", default-features = false, features = ["tls", "json"] }
+
+# WinUI 3 投影：官方 windows crate 不含 Microsoft.UI.*（WinAppSDK 自带元数据），
+# 因此 UI 绑定取自 winui3（windows-rs 生成的 WinAppSDK 投影 + 手写组合层）。
+windows = "0.62"
+windows-core = "0.62"
+winui3 = { git = "https://github.com/Alovchin91/winui3-rs", rev = "94d4f90c0cd2a2c20405dc4ef55c71c193caf34b", default-features = false }
+
+[profile.release]
+debug = "none"
+strip = "debuginfo"
+lto = "thin"
+codegen-units = 16
+panic = "abort"

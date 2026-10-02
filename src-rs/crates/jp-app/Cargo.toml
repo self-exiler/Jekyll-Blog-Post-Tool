@@ -1,0 +1,71 @@
+[package]
+name = "jp-app"
+description = "Jekyll 博文工具 WinUI 3 外壳（windows-rs，纯代码构建 UI）"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "jp-app"
+path = "src/main.rs"
+
+[build-dependencies]
+# exe 文件自身的图标要的是构建期 Win32 资源（RT_GROUP_ICON），只能在这里挂。
+# `toml` 特性会引入依赖，本项目只用到 add_icon，故关掉默认特性。
+winresource = { version = "0.1", default-features = false }
+
+[dependencies]
+jp-domain.workspace = true
+jp-application.workspace = true
+jp-infrastructure.workspace = true
+chrono.workspace = true
+windows-core.workspace = true
+
+# WinUI 3 投影：`Microsoft.UI.*` 命名空间只存在于 winui3 生成的绑定里，
+# 官方 windows crate 不覆盖（详见 src-rs/README.md）。
+# 特性名取自 winui3 的 Cargo.toml；`XamlApp_Navigation` 已含 Controls/Navigation，
+# 仍显式列出 `UI_Xaml_Controls`，因为界面全部由代码构建、控件是硬依赖。
+winui3 = { workspace = true, features = [
+    "MsixDynamicDependency",
+    "Foundation",
+    "UI_Dispatching",
+    "UI_Windowing",
+    "UI_Composition",
+    "UI_Xaml_Media",
+    "UI_Xaml_Controls",
+    # Button/CheckBox/ComboBox/ListView/RadioButton/StackPanel 在 winui3 里
+    # 由 UI_Composition + UI_Xaml_Controls_Primitives 双门控，只开 Controls 拿不到。
+    "UI_Xaml_Controls_Primitives",
+    # 预览渲染要用 Documents 内联元素（Run/Bold/Italic/Hyperlink/LineBreak）
+    # 与 TextBlock::Inlines——它们只在 UI_Xaml_Documents 特性下投影。
+    "UI_Xaml_Documents",
+    # `UIElement::Focus` / `TabNavigation` 这一族成员全部由它门控，工具栏改完正文要重新聚焦编辑器。
+    "UI_Xaml_Input",
+    "UI_Xaml_Navigation",
+    "XamlApp",
+    "XamlApp_Navigation",
+] }
+pulldown-cmark = { version = "0.13.4", default-features = false }
+
+[dependencies.windows]
+workspace = true
+features = [
+    "Foundation",
+    "Foundation_Collections",
+    "Graphics",
+    "Storage",
+    "Storage_Pickers",
+    # `PickSingleFolderAsync`/`PickSingleFileAsync`/`PickMultipleFilesAsync` 在
+    # windows 0.62 投影里由 Storage_Search 门控。
+    "Storage_Search",
+    # `Windows::UI::Color`（画刷取色用）；`UI_Text` 给 `FontWeight`。
+    "UI",
+    "UI_Text",
+    "Win32_Foundation",
+    "Win32_Graphics_Dwm",
+    "Win32_Graphics_Gdi",
+    # `IInitializeWithWindow`（文件/目录选择器挂窗）在 windows 0.62 里归 Win32_UI_Shell。
+    "Win32_UI_Shell",
+    "Win32_UI_HiDpi",
+    "Win32_UI_WindowsAndMessaging",
+]

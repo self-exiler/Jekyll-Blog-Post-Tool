@@ -36,7 +36,12 @@ pkg/
 .workbuddy/
 .icon_backup_*/
 *.slnx.bak
-# Inno Setup 编译产物
+# WiX 构建产物与缓存（output：MSI；cache：WinAppSDK redist；staging：Rust 版收割暂存）
 installer/output/
+installer/cache/
+installer/staging/
+
+## Rust（src-rs）
+/src-rs/target/
 
 *.pyc

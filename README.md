@@ -109,6 +109,10 @@ src/
     ├── Properties/PublishProfiles/FolderProfile.pubxml  # Release 发布配置（自包含）
     ├── app.manifest
     └── Assets/                          #   图标与启动画面资源
+src-rs/                                 # Rust / windows-rs 平行实现（同分层、同语义）
+├── Cargo.toml                          # workspace：jp-domain / jp-application / jp-infrastructure / jp-app
+└── README.md                           # 架构说明、与 .NET 版的差异清单、已知风险（已编译并实机跑通）
+
 Assets/                                 # 图标资源的svg原型
 └── build_icons.py                      # 图标生成脚本
 
@@ -118,11 +122,22 @@ tests/
 └── JekyllPostTool.Infrastructure.Tests/#   仓储 / YAML 序列化 / OpenAI 服务
 
 installer/
-├── setup.iss                           # Inno Setup 脚本（按用户安装，自包含）
-├── build.ps1                           # 发布 + 编译安装包一条龙
-├── ChineseSimplified.isl               # 安装器中文语言包（vendor 自上游）
+├── JekyllPostTool.wxs                  # WiX v5 定义：.NET 版 MSI（按用户安装，自包含）
+├── JekyllPostTool.Rust.wxs             # WiX v5 定义：Rust 版 MSI（内嵌 WinAppSDK redist）
+├── build.ps1                           # 编译 + 打包两个版本一条龙
 └── README.md                           # 打包与维护说明
 ```
+
+## 另一种架构：Rust（`src-rs/`）
+
+同一套分层用 Rust + windows-rs 重写了一遍：业务层逐条对齐 .NET 实现（校验、文件名、YAML、冲突处理、
+外部修改检测都不改行为），表示层改为**纯代码构建 WinUI 3**——没有 XAML、没有 `x:Bind`、没有 MVVM
+源生成器，`async` 命令换成「工作线程执行 + `DispatcherQueue` 回投 UI 线程」。
+WinUI 投影取自 `winui3`（官方 `windows` crate 的元数据不含 `Microsoft.UI.Xaml`）。
+
+- 与 .NET 版的差异清单、已知风险（含运行期实测出的几个坑）见 [`src-rs/README.md`](src-rs/README.md)；
+- 已接入 `installer/` 与 GitHub Release 管线：Rust 版打包为
+  `JekyllPostTool(Rust)-windows-x64-<版本>.msi`（安装时静默注册 WinAppSDK 运行时），与 .NET 版并列发布。
 
 ## 开发环境
 
@@ -131,6 +146,7 @@ installer/
 - **运行时**：Debug 运行依赖系统安装的 Windows App Runtime 2.3+
   （[下载](https://aka.ms/windowsappsdk/2.3/latest/windowsappruntimeinstall-x64.exe)，Release 发布为自包含，无此要求）
 - **IDE**：Visual Studio 2022 或 VS Code / Rider
+- **Rust**（仅 `src-rs/` 需要）：rustup `stable-x86_64-pc-windows-msvc`
 
 ## 构建与运行
 
@@ -147,21 +163,27 @@ dotnet test JekyllPostTool.slnx
 
 ## 打包与分发
 
-发布为**完全自包含**（.NET 与 WinUI 运行时随应用分发），用 Inno Setup 打成按用户安装的程序：
+用 **WiX Toolset v5** 打成按用户安装的 MSI，两个版本并行发布：
 
-- 安装位置：`%LOCALAPPDATA%\Programs\JekyllPostTool`
-- **无需管理员权限、全程无 UAC、无需联网**，不安装任何系统级依赖
-- 产物：单文件 `JekyllPostTool-windows-x64-<版本>.exe`（约 68MB），面向 Windows 10 1809+ x64
+| 版本 | 产物 | 运行时处理 |
+| --- | --- | --- |
+| .NET | `JekyllPostTool-windows-x64-<版本>.msi`（约 83MB） | 发布为**完全自包含**，MSI 不装任何依赖 |
+| Rust | `JekyllPostTool(Rust)-windows-x64-<版本>.msi`（约 122MB） | 内嵌 WinAppSDK 2.5.1 redist，安装时静默注册运行时 |
+
+- 安装位置：`%LOCALAPPDATA%\Programs\JekyllPostTool`（Rust 版为 `JekyllPostTool-rust`）
+- **无需管理员权限、全程无 UAC**，面向 Windows 10 1809+ x64
+- 推 `v*` tag 时 GitHub Actions 自动编译两个 MSI 并挂到 Release（`installer/build.ps1` 本地同样可跑）
 
 ```powershell
-# 前置：winget install JRSoftware.InnoSetup
-powershell -File installer\build.ps1                 # 发布 + 打包
-powershell -File installer\build.ps1 -Version 1.2.0  # 指定版本号
-powershell -File installer\build.ps1 -SkipPublish    # 复用已有发布产物
+# 前置：dotnet tool install -g wix；Rust 版另需 rustup（stable-msvc）
+powershell -File installer\build.ps1                     # 两个版本都构建
+powershell -File installer\build.ps1 -Version 1.2.0      # 指定版本号
+powershell -File installer\build.ps1 -Target rust        # 只构建 Rust 版
+powershell -File installer\build.ps1 -SkipPublish        # 复用已有编译产物
 ```
 
 细节见 [installer/README.md](installer/README.md)。注意：Release 的
-`SelfContained` / `WindowsAppSDKSelfContained` 不可改回 false，否则安装包将不内置运行时。
+`SelfContained` / `WindowsAppSDKSelfContained` 不可改回 false，否则 .NET 版安装包将不内置运行时。
 
 ## 使用指南
 

@@ -1,0 +1,15 @@
+[package]
+name = "jp-application"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "jp_application"
+path = "src/lib.rs"
+
+[dependencies]
+jp-domain.workspace = true
+chrono.workspace = true
+serde.workspace = true
+serde_json.workspace = true

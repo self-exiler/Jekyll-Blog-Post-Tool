@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Jekyll Post Tool（Rust 版，src-rs/jp-app）WiX v5 安装包定义。
+  由 installer/build.ps1 调用：
+    wix build JekyllPostTool.Rust.wxs -d Version=... -d RustStage=... -d RuntimeInstaller=...
+
+  与 .NET 版（自包含）不同，Rust 版是未打包（unpackaged）运行：
+    - exe 旁必须带一份 Microsoft.WindowsAppRuntime.dll（winui3 的 MsixDynamicDependency
+      是静态导入，缺 DLL 进程在 main 之前 0xC0000135 退出）；
+    - 运行期靠 PackageDependency 挂接 WinAppSDK 2.x 框架包（Microsoft.WindowsAppRuntime.2），
+      目标机必须已注册该框架包。
+  因此本安装器内嵌官方 redist 安装器（WindowsAppRuntimeInstall-x64.exe，存 Binary 表），
+  安装时以 - -quiet 静默执行：它按用户注册 Framework/Main/Singleton/DDLM 包，无需管理员，
+  已装同版本时幂等跳过。两份二进制均由 build.ps1 从 redist ZIP 解出并放进 RustStage/缓存。
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <Package Name="Jekyll Post Tool (Rust)"
+           Manufacturer="self-exiler"
+           Version="$(var.Version)"
+           UpgradeCode="bc9ee574-71b2-46a7-ba49-f057a3db7afc"
+           Scope="perUser"
+           Language="2052">
+
+    <MajorUpgrade DowngradeErrorMessage="已安装更新版本的 [ProductName]，无法降级。" />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <Icon Id="AppIcon.ico" SourceFile="$(sys.SOURCEFILEDIR)..\src\JekyllPostTool.App\Assets\AppIcon.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon.ico" />
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <!-- 桌面快捷方式特性 Level=2，高于 INSTALLLEVEL=1，默认不勾选（对齐原 Inno 的 desktopicon 任务） -->
+    <Property Id="INSTALLLEVEL" Value="1" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="运行 Jekyll Post Tool (Rust)" />
+
+    <ui:WixUI Id="WixUI_FeatureTree" />
+    <UI>
+      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApplication"
+               Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT Installed" />
+    </UI>
+
+    <CustomAction Id="LaunchApplication" Directory="INSTALLFOLDER"
+                  ExeCommand="jp-app.exe"
+                  Return="asyncNoWait" Impersonate="yes" Execute="immediate" />
+
+    <!-- WinAppSDK 运行时 redist（Type 2：exe 存 Binary 表，MSI 释放到临时目录执行，不占安装目录） -->
+    <Binary Id="WinAppSdkRedist" SourceFile="$(var.RuntimeInstaller)" />
+    <CustomAction Id="InstallWinAppRuntime" BinaryRef="WinAppSdkRedist"
+                  ExeCommand="--quiet"
+                  Return="check" Impersonate="yes" Execute="deferred" />
+    <InstallExecuteSequence>
+      <!-- 卸载（REMOVE）不碰共享的 WinAppSDK 框架包；安装/修改/重装都确保运行时就位 -->
+      <Custom Action="InstallWinAppRuntime" After="InstallFiles" Condition="NOT REMOVE" />
+    </InstallExecuteSequence>
+
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="ProgramsFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="JekyllPostTool-rust" />
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="AppMenuFolder" Name="Jekyll Post Tool (Rust)" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="DesktopFolder">
+      <Component Id="DesktopShortcut" Guid="2f0491d0-06e5-4883-8649-97929a37c2b6">
+        <Shortcut Id="AppDesktopShortcut" Name="Jekyll Post Tool (Rust)"
+                  Target="[INSTALLFOLDER]jp-app.exe"
+                  Icon="AppIcon.ico" WorkingDirectory="INSTALLFOLDER" />
+        <RegistryValue Root="HKCU" Key="Software\JekyllPostToolRust" Name="DesktopShortcut"
+                       Value="1" Type="integer" />
+      </Component>
+    </StandardDirectory>
+
+    <!-- 暂存目录整体收割：jp-app.exe + Microsoft.WindowsAppRuntime.dll（build.ps1 准备） -->
+    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
+      <Files Include="$(var.RustStage)\**" />
+    </ComponentGroup>
+
+    <DirectoryRef Id="AppMenuFolder">
+      <Component Id="StartMenuShortcuts" Guid="9f717786-264a-442e-b13c-95586d32c845">
+        <Shortcut Id="AppStartMenuShortcut" Name="Jekyll Post Tool (Rust)"
+                  Target="[INSTALLFOLDER]jp-app.exe"
+                  Icon="AppIcon.ico" WorkingDirectory="INSTALLFOLDER" />
+        <Shortcut Id="UninstallShortcut" Name="卸载 Jekyll Post Tool (Rust)"
+                  Target="[System6432Folder]msiexec.exe" Arguments="/x [ProductCode]" />
+        <RegistryValue Root="HKCU" Key="Software\JekyllPostToolRust" Name="StartMenuShortcuts"
+                       Value="1" Type="integer" />
+      </Component>
+      <Component Id="AppMenuFolderCleanup" Guid="7d4a432e-cf2b-4e5d-a779-f95ba7d2c58f">
+        <RemoveFolder Id="RemoveAppMenuFolder" Directory="AppMenuFolder" On="uninstall" />
+        <RegistryValue Root="HKCU" Key="Software\JekyllPostToolRust" Name="MenuFolder"
+                       Value="1" Type="integer" />
+      </Component>
+    </DirectoryRef>
+
+    <Feature Id="Main" Title="Jekyll Post Tool (Rust)" Level="1" AllowAdvertise="no">
+      <ComponentGroupRef Id="AppFiles" />
+      <ComponentRef Id="StartMenuShortcuts" />
+      <ComponentRef Id="AppMenuFolderCleanup" />
+    </Feature>
+    <Feature Id="DesktopIcon" Title="桌面快捷方式" Description="在桌面上创建 Jekyll Post Tool (Rust) 的快捷方式。"
+             Level="2" AllowAdvertise="no">
+      <ComponentRef Id="DesktopShortcut" />
+    </Feature>
+  </Package>
+</Wix>

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Jekyll Post Tool（.NET 版）WiX v5 安装包定义。
+  由 installer/build.ps1 调用：wix build JekyllPostTool.wxs -d Version=... -d PublishDir=...
+  发布为完全自包含（.NET 与 WinAppSDK 运行时随应用分发），MSI 不需要装任何运行期依赖。
+  按用户安装（Scope="perUser"）到 %LOCALAPPDATA%\Programs\JekyllPostTool，全程无 UAC。
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <Package Name="Jekyll Post Tool"
+           Manufacturer="self-exiler"
+           Version="$(var.Version)"
+           UpgradeCode="e179a136-ba33-44d8-953a-49b0481ea0b6"
+           Scope="perUser"
+           Language="2052">
+
+    <MajorUpgrade DowngradeErrorMessage="已安装更新版本的 [ProductName]，无法降级。" />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <Icon Id="AppIcon.ico" SourceFile="$(sys.SOURCEFILEDIR)..\src\JekyllPostTool.App\Assets\AppIcon.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon.ico" />
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <!-- 桌面快捷方式特性 Level=2，高于 INSTALLLEVEL=1，默认不勾选（对齐原 Inno 的 desktopicon 任务） -->
+    <Property Id="INSTALLLEVEL" Value="1" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="运行 Jekyll Post Tool" />
+
+    <ui:WixUI Id="WixUI_FeatureTree" />
+    <UI>
+      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApplication"
+               Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT Installed" />
+    </UI>
+
+    <CustomAction Id="LaunchApplication" Directory="INSTALLFOLDER"
+                  ExeCommand="JekyllPostTool.App.exe"
+                  Return="asyncNoWait" Impersonate="yes" Execute="immediate" />
+
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="ProgramsFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="JekyllPostTool" />
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="AppMenuFolder" Name="Jekyll Post Tool" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="DesktopFolder">
+      <Component Id="DesktopShortcut" Guid="8a35e769-4a70-41d1-97a9-e21a52a4d026">
+        <Shortcut Id="AppDesktopShortcut" Name="Jekyll Post Tool"
+                  Target="[INSTALLFOLDER]JekyllPostTool.App.exe"
+                  Icon="AppIcon.ico" WorkingDirectory="INSTALLFOLDER" />
+        <RegistryValue Root="HKCU" Key="Software\JekyllPostTool" Name="DesktopShortcut"
+                       Value="1" Type="integer" />
+      </Component>
+    </StandardDirectory>
+
+    <!-- 自包含发布目录整体收割（每文件一个组件，Id 由 WiX 生成） -->
+    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
+      <Files Include="$(var.PublishDir)\**" />
+    </ComponentGroup>
+
+    <DirectoryRef Id="AppMenuFolder">
+      <Component Id="StartMenuShortcuts" Guid="3ba9e649-d338-4120-91a5-29242b7ea17f">
+        <Shortcut Id="AppStartMenuShortcut" Name="Jekyll Post Tool"
+                  Target="[INSTALLFOLDER]JekyllPostTool.App.exe"
+                  Icon="AppIcon.ico" WorkingDirectory="INSTALLFOLDER" />
+        <Shortcut Id="UninstallShortcut" Name="卸载 Jekyll Post Tool"
+                  Target="[System6432Folder]msiexec.exe" Arguments="/x [ProductCode]" />
+        <RegistryValue Root="HKCU" Key="Software\JekyllPostTool" Name="StartMenuShortcuts"
+                       Value="1" Type="integer" />
+      </Component>
+      <Component Id="AppMenuFolderCleanup" Guid="c9f96f65-9e26-4d74-8a87-976b0f4bdcb3">
+        <RemoveFolder Id="RemoveAppMenuFolder" Directory="AppMenuFolder" On="uninstall" />
+        <RegistryValue Root="HKCU" Key="Software\JekyllPostTool" Name="MenuFolder"
+                       Value="1" Type="integer" />
+      </Component>
+    </DirectoryRef>
+
+    <Feature Id="Main" Title="Jekyll Post Tool" Level="1" AllowAdvertise="no">
+      <ComponentGroupRef Id="AppFiles" />
+      <ComponentRef Id="StartMenuShortcuts" />
+      <ComponentRef Id="AppMenuFolderCleanup" />
+    </Feature>
+    <Feature Id="DesktopIcon" Title="桌面快捷方式" Description="在桌面上创建 Jekyll Post Tool 的快捷方式。"
+             Level="2" AllowAdvertise="no">
+      <ComponentRef Id="DesktopShortcut" />
+    </Feature>
+  </Package>
+</Wix>
