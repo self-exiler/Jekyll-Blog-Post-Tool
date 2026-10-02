@@ -44,6 +44,10 @@ public sealed class PostSaveUseCase(
     /// 保存博文。文件名冲突时经 <paramref name="prompts"/> 询问并循环重试；
     /// 外部修改检测返回 <see cref="PostOperationStatus.ModifiedExternally"/>，由调用方确认后续空基线哈希重存。
     /// </summary>
+    /// <param name="body">
+    /// 非 null 表示调用方（表单/正文页）对正文有主张，新建与更新都写这份正文；
+    /// null 表示不碰正文——新建落空正文，更新保留磁盘上的最新 body（FR-3.10 的「未编辑则不被覆盖」）。
+    /// </param>
     public async Task<PostOperationResult> SaveAsync(
         BlogProject project,
         FrontMatter frontMatter,
@@ -58,7 +62,7 @@ public sealed class PostSaveUseCase(
         {
             var result = originalFilePath is null
                 ? await CreateCoreAsync(project, frontMatter, body, resolution, cancellationToken)
-                : await UpdateCoreAsync(project, originalFilePath, frontMatter, originalContentHash, resolution, cancellationToken);
+                : await UpdateCoreAsync(project, originalFilePath, frontMatter, body, originalContentHash, resolution, cancellationToken);
 
             if (result is not { IsConflict: true, Conflict: { } conflict })
             {
@@ -110,6 +114,7 @@ public sealed class PostSaveUseCase(
         BlogProject project,
         string originalFilePath,
         FrontMatter frontMatter,
+        string? body,
         string? originalContentHash,
         ConflictResolutionKind? conflictResolution,
         CancellationToken cancellationToken)
@@ -146,9 +151,14 @@ public sealed class PostSaveUseCase(
             newFilePath = conflict.ResolveFilePath(conflictResolution);
         }
 
-        // FR-3.10：保留磁盘最新 body，从已读取的全文切分
-        MarkdownSplitter.TrySplit(content, out _, out var currentBody);
-        await postRepository.SaveAsync(new Post(newFilePath, frontMatter, currentBody), cancellationToken);
+        // FR-3.10：调用方未编辑过正文（body 为 null）时保留磁盘最新，从已读取的全文切分；
+        // 有主张时（正文脏了才传进来）写表单正文
+        if (body is null)
+        {
+            MarkdownSplitter.TrySplit(content, out _, out body);
+        }
+
+        await postRepository.SaveAsync(new Post(newFilePath, frontMatter, body), cancellationToken);
 
         if (renamed)
         {

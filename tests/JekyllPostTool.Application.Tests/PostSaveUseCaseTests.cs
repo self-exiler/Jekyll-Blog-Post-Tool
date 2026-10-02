@@ -232,6 +232,27 @@ public class PostSaveUseCaseTests
     }
 
     [Fact]
+    public async Task SaveAsync_UpdateWithBodyFromForm_OverwritesTheDiskBody()
+    {
+        var postRepo = new StubPostRepository();
+        var originalPath = Path.Combine(Project.PostsDirectory, "2026-01-01-old-title.md");
+        postRepo.AddExistingFile(originalPath, "---\ntitle: Old Title\n---\noriginal body");
+        var useCase = CreateUseCase(postRepo);
+        var hash = (await useCase.GetContentHashAsync(originalPath))!;
+
+        var fm = ValidFrontMatter();
+        fm.Date = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        fm.Title = "Old Title"; // 同名保存：不改名
+        // 正文脏了才写回：调用方传 Some 即对正文有主张，更新路径同样写这份正文
+        var result = await useCase.SaveAsync(Project, fm, "edited body", Prompts(null), originalFilePath: originalPath, originalContentHash: hash);
+
+        Assert.True(result.IsSuccess);
+        var saved = await postRepo.ReadAllTextAsync(originalPath);
+        Assert.EndsWith("edited body", saved);
+        Assert.DoesNotContain("original body", saved);
+    }
+
+    [Fact]
     public async Task SaveAsync_UpdateModifiedExternally_ReturnsStatus()
     {
         var postRepo = new StubPostRepository();

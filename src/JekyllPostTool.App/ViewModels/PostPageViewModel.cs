@@ -31,6 +31,12 @@ public sealed partial class PostPageViewModel : ObservableObject
     private string? _originalFilePath;
     private string? _originalContentHash;
 
+    /// <summary>
+    /// 正文自上次落盘/加载后是否被本工具改过（FR-3.10 与设计方案「编辑随保存统一写入」的接缝）：
+    /// 没改过就不把正文交给保存，从而保留外部编辑器写入的最新正文。
+    /// </summary>
+    private bool _bodyDirty;
+
     [ObservableProperty]
     private string _title = string.Empty;
 
@@ -135,6 +141,9 @@ public sealed partial class PostPageViewModel : ObservableObject
     }
 
     partial void OnIsBusyChanged(bool value) => SavePostCommand.NotifyCanExecuteChanged();
+
+    // ObservableProperty 生成器已做相等性短路：触发即代表内容真的变了
+    partial void OnBodyChanged(string value) => _bodyDirty = true;
 
     /// <summary>
     /// 获取当前博文 slug：优先从已保存文件名提取，否则用标题生成（遵循 ADR-006 中文保留）。

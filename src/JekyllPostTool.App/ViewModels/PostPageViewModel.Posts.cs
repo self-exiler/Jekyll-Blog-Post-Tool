@@ -20,6 +20,7 @@ public sealed partial class PostPageViewModel
         // FR-3.1：新建时 date 为空，不预填默认值
         ApplyFormState(PostFormState.Empty(DateTimeOffset.Now));
         Body = string.Empty;
+        _bodyDirty = false;
 
         foreach (var author in AvailableAuthors)
         {
@@ -81,9 +82,12 @@ public sealed partial class PostPageViewModel
 
         IsBusy = true;
         PostOperationResult result;
+        // 正文没被本工具碰过就不交给保存：更新路径据此保留磁盘最新 body（FR-3.10），
+        // 新建路径没有磁盘正文可保留，恒写表单值
+        string? bodyToWrite = _originalFilePath is null || _bodyDirty ? Body : null;
         try
         {
-            result = await SaveViaUseCaseAsync(project, frontMatter, _originalContentHash);
+            result = await SaveViaUseCaseAsync(project, frontMatter, bodyToWrite, _originalContentHash);
 
             if (result.IsModifiedExternally)
             {
@@ -104,7 +108,7 @@ public sealed partial class PostPageViewModel
                 }
 
                 // 覆盖外部修改：置空基线哈希后重存（冲突循环仍由用例处理）
-                result = await SaveViaUseCaseAsync(project, frontMatter, originalContentHash: null);
+                result = await SaveViaUseCaseAsync(project, frontMatter, bodyToWrite, originalContentHash: null);
             }
         }
         catch (Exception ex)
@@ -138,6 +142,8 @@ public sealed partial class PostPageViewModel
 
         _originalFilePath = result.FilePath;
         _originalContentHash = await _saveUseCase.GetContentHashAsync(result.FilePath!);
+        // 走到这里说明正文已按本次保存的口径落盘，脏态归零
+        _bodyDirty = false;
         PageTitle = $"博文 - {Path.GetFileName(result.FilePath)}";
         NotifyPostFileChanged();
 
@@ -149,12 +155,13 @@ public sealed partial class PostPageViewModel
     private async Task<PostOperationResult> SaveViaUseCaseAsync(
         JekyllPostTool.Domain.Projects.BlogProject project,
         FrontMatter frontMatter,
+        string? body,
         string? originalContentHash)
     {
         return await _saveUseCase.SaveAsync(
             project,
             frontMatter,
-            Body,
+            body,
             new SavePrompts(ShowConflictDialogAsync, ConfirmOverwriteAsync),
             _originalFilePath,
             originalContentHash);
@@ -195,6 +202,8 @@ public sealed partial class PostPageViewModel
             PostFormState.FromFrontMatter(loaded.Post.FrontMatter),
             loaded.Post.FrontMatter.Authors);
         Body = loaded.Post.Body;
+        // 加载即基线：磁盘内容与表单一致，不算本工具改过
+        _bodyDirty = false;
 
         UpdateAuthorsDisplay();
         UpdatePreview();
