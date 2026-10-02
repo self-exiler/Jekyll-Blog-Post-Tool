@@ -5,7 +5,7 @@
 | 产物 | 定义文件 | 内容 |
 | --- | --- | --- |
 | `JekyllPostTool-windows-x64-<版本>.msi` | `JekyllPostTool.wxs` | .NET 版（`src/`），发布为**完全自包含**，MSI 不装任何运行期依赖 |
-| `JekyllPostTool(Rust)-windows-x64-<版本>.msi` | `JekyllPostTool.Rust.wxs` | Rust 版（`src-rs/`），内嵌 WinAppSDK 2.5.1 redist，安装时静默注册运行时 |
+| `JekyllPostTool_Rust-windows-x64-<版本>.msi` | `JekyllPostTool.Rust.wxs` | Rust 版（`src-rs/`），内嵌 WinAppSDK 2.5.1 redist，安装时静默注册运行时 |
 
 两个包均为**按用户安装**（MSI `Scope="perUser"`）：
 

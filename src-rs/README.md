@@ -186,7 +186,7 @@ domain/application 里的 trait。单元测试就近放在各 crate 的 `#[cfg(t
    在 `Application::Start` 里接 `ResourceManagerRequested` 并指向 `resources.pri`。本项目没有资源包，
    照搬只会得到一个必然取不到资源的空管理器，所以**没有接**。实测五页渲染未撞资源查找异常。
 3. `GitHub Actions` 发布管线（`.github/workflows`）与 `installer/` 已同时覆盖 .NET 版与本目录：
-   `installer/build.ps1 -Target rust` 产出 `JekyllPostTool(Rust)-windows-x64-<版本>.msi`
+   `installer/build.ps1 -Target rust` 产出 `JekyllPostTool_Rust-windows-x64-<版本>.msi`
    （WiX v5，按用户安装，见 `installer/README.md`）。
 
 ## 构建

@@ -137,7 +137,7 @@ WinUI 投影取自 `winui3`（官方 `windows` crate 的元数据不含 `Microso
 
 - 与 .NET 版的差异清单、已知风险（含运行期实测出的几个坑）见 [`src-rs/README.md`](src-rs/README.md)；
 - 已接入 `installer/` 与 GitHub Release 管线：Rust 版打包为
-  `JekyllPostTool(Rust)-windows-x64-<版本>.msi`（安装时静默注册 WinAppSDK 运行时），与 .NET 版并列发布。
+  `JekyllPostTool_Rust-windows-x64-<版本>.msi`（安装时静默注册 WinAppSDK 运行时），与 .NET 版并列发布。
 
 ## 开发环境
 
@@ -168,7 +168,7 @@ dotnet test JekyllPostTool.slnx
 | 版本 | 产物 | 运行时处理 |
 | --- | --- | --- |
 | .NET | `JekyllPostTool-windows-x64-<版本>.msi`（约 83MB） | 发布为**完全自包含**，MSI 不装任何依赖 |
-| Rust | `JekyllPostTool(Rust)-windows-x64-<版本>.msi`（约 122MB） | 内嵌 WinAppSDK 2.5.1 redist，安装时静默注册运行时 |
+| Rust | `JekyllPostTool_Rust-windows-x64-<版本>.msi`（约 122MB） | 内嵌 WinAppSDK 2.5.1 redist，安装时静默注册运行时 |
 
 - 安装位置：`%LOCALAPPDATA%\Programs\JekyllPostTool`（Rust 版为 `JekyllPostTool-rust`）
 - **无需管理员权限、全程无 UAC**，面向 Windows 10 1809+ x64

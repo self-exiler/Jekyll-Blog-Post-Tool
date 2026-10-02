@@ -2,7 +2,7 @@
 # 用法：powershell -File installer\build.ps1 [-Version 1.0.0] [-Target all|dotnet|rust] [-SkipPublish]
 # 产物：
 #   installer\output\JekyllPostTool-windows-x64-<Version>.msi        （.NET 版，自包含）
-#   installer\output\JekyllPostTool(Rust)-windows-x64-<Version>.msi  （Rust 版，带 WinAppSDK redist）
+#   installer\output\JekyllPostTool_Rust-windows-x64-<Version>.msi  （Rust 版，带 WinAppSDK redist）
 # 依赖：
 #   - WiX Toolset 5.x（dotnet tool install -g wix）；UI 扩展缺失时本脚本自动安装
 #   - .NET 10 SDK（dotnet 版）
@@ -140,7 +140,7 @@ function Build-Rust {
     Copy-Item $appExe "$stage\jp-app.exe"
     Copy-Item $redist.Dll "$stage\Microsoft.WindowsAppRuntime.dll"
 
-    $out = "$PSScriptRoot\output\JekyllPostTool(Rust)-windows-x64-$Version.msi"
+    $out = "$PSScriptRoot\output\JekyllPostTool_Rust-windows-x64-$Version.msi"
     Write-Host "== 编译 Rust 版 MSI ==" -ForegroundColor Cyan
     & $wix build "$PSScriptRoot\JekyllPostTool.Rust.wxs" `
         -ext WixToolset.UI.wixext -culture zh-CN `
